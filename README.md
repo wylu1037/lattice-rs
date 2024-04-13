@@ -1,10 +1,11 @@
 <h1 align="center">Lattice Rust</h1>
-<div style="display:flex;justify-content:center;gap:10px;">
+
+<p style="display:flex;justify-content:center;gap:10px;">
     <a>rust</a>
     <a>blockchain</a>
     <a>contract</a>
-    <a href="#WebAssembly">WebAssembly</a>
-</div>
+    <a>wasm</a>
+</p>
 
 <h1>简介</h1>
 Rust语言版本的链SDK。
