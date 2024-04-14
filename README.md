@@ -1,10 +1,10 @@
 <h1 align="center">Lattice Rust</h1>
 
-<p style="display:flex;justify-content:center;gap:10px;">
-    <a>rust</a>
-    <a>blockchain</a>
-    <a>contract</a>
-    <a>wasm</a>
+<p align="center">
+    <a href="#rust">rust</a>  &#xa0; | &#xa0;
+    <a href="#blockchain">blockchain</a>  &#xa0; | &#xa0;
+    <a href="#contract">contract</a>  &#xa0; | &#xa0;
+    <a href="wasm">wasm</a>
 </p>
 
 <h1>简介</h1>
