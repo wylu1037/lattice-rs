@@ -1,10 +1,11 @@
 [package]
-name = "rlp"
+name = "abi"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-open-fastrlp = { version = "0.1.4", features = ["std", "derive", "ethereum-types"] }
-rlp = { version = "0.5", features = ["derive"] }
+ethabi = { version = "18.0.0", default-features = false, features = ["full-serde", "rlp"] }
+
+thiserror.workspace = true

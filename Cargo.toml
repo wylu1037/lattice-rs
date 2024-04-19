@@ -12,8 +12,11 @@ members = [
     "model",
     "wallet",
     "rlp",
+    "abi",
 ]
 
 [workspace.dependencies]
 core = { version = "0.1.0", path = "core", default-features = false }
 crypto = { version = "" }
+
+thiserror = "1.0"
