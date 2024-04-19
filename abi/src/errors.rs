@@ -1,4 +1,5 @@
 use thiserror::Error;
+
 use crate::human_readable;
 
 #[derive(Error, Debug)]
@@ -9,5 +10,6 @@ pub enum ParseError {
     #[error(transparent)]
     ParseError(#[from] ethabi::Error),
     // errors from human readable lexer
-    LexerError(#[from] human_readable::)
+    #[error(transparent)]
+    LexerError(#[from] human_readable::lexer::LexerError),
 }

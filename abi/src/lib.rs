@@ -1,2 +1,2 @@
 mod errors;
-mod human_readable;
+pub mod human_readable;
