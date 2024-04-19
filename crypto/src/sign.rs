@@ -1,9 +1,10 @@
 use libsm::sm2::ecc::EccCtx;
-use libsm::sm2::signature::SigCtx;
+use libsm::sm2::signature::{SigCtx, Signature};
 use libsm::sm3::hash::Sm3Hash;
 use num_bigint::BigUint;
 use once_cell::sync::Lazy;
 use secp256k1::{All, Message, PublicKey, rand::rngs::OsRng, Secp256k1, SecretKey};
+use secp256k1::ecdsa::Signature as SigNist;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Cryptography {
@@ -80,6 +81,12 @@ impl KeyPair {
         }
     }
 
+    /// 签名
+    /// # 入参
+    /// message 待签名的消息
+    ///
+    /// # 出参
+    /// signature 签名结果
     pub fn sign(&self, message: &[u8]) -> String {
         match self.cryptography {
             Cryptography::Secp256k1 => {
@@ -89,11 +96,12 @@ impl KeyPair {
                     .sign_ecdsa_recoverable(&msg, &sk).serialize_compact();
                 let r: &[u8] = &sig[..32];
                 let s: &[u8] = &sig[32..];
+                let recovery_id = recovery_id.to_i32() as u32 + 27;
                 format!(
-                    "0x{}{}0{}",
+                    "0x{}{}{}",
                     hex::encode(r),
                     hex::encode(s),
-                    BigUint::from(recovery_id.to_i32() as u32).to_str_radix(16),
+                    BigUint::from(recovery_id).to_str_radix(16),
                 )
             }
             Cryptography::Sm2p256v1 => {
@@ -109,6 +117,42 @@ impl KeyPair {
                 )
             }
         }
+    }
+
+    /// 验签
+    pub fn verify(&self, message: &[u8], signature: &str) -> bool {
+        match self.cryptography {
+            Cryptography::Secp256k1 => {
+                let msg = Message::from_digest_slice(&message).unwrap();
+                let sk = SecretKey::from_slice(self.secret_key.to_bytes_be().as_slice()).unwrap();
+                let mut pk = PublicKey::from_secret_key(&CONTEXT_SECP256K1, &sk).serialize_uncompressed();
+                pk[0] = 4;
+                let public_key = PublicKey::from_slice(&pk).unwrap();
+                let signature = KeyPair::get_clean_signature_hex(&signature);
+                let signature = hex::decode(signature).unwrap();
+                let signature = SigNist::from_compact(signature.as_slice()).unwrap();
+                CONTEXT_SECP256K1.verify_ecdsa(&msg, &signature, &public_key).is_ok()
+            }
+            Cryptography::Sm2p256v1 => {
+                let sk = BigUint::from_bytes_be(self.secret_key.to_bytes_be().as_slice());
+                let pk = CONTEXT_SM2P256V1.pk_from_sk(&sk).unwrap();
+                let signature = KeyPair::get_clean_signature_hex(signature);
+                let r = hex::decode(&(signature[0..64])).unwrap();
+                let s = hex::decode(&(signature[64..])).unwrap();
+                let signature = Signature::new(r.as_slice(), s.as_slice());
+                CONTEXT_SM2P256V1.verify(&message, &pk, &signature).is_ok()
+            }
+        }
+    }
+
+    /// 只获取签名中的r、s
+    fn get_clean_signature_hex(signature: &str) -> &str {
+        let hex_str = if signature.starts_with("0x") {
+            &signature[2..]
+        } else {
+            signature
+        };
+        &hex_str[..hex_str.len().min(128)]
     }
 }
 
@@ -156,17 +200,50 @@ mod tests {
     }
 
     #[test]
-    fn sign_secp256k1() {
+    fn sign_and_verify_secp256k1() {
         let sk =
             hex::decode("c842e1ef9ece7e992a4021423a58d6e89c751881e43fd7dbebe70f932ad493e2").unwrap();
-
-        let data =
+        let message =
             hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
 
         let key_pair = KeyPair::from_secret_key(&sk, Cryptography::Secp256k1);
+        let signature = key_pair.sign(&message);
+        println!("{}", signature);
+        let pass = key_pair.verify(&message, &signature);
+        assert_eq!(pass, true)
+    }
 
-        let sig = KeyPair::sign(&key_pair, &data);
-        assert_eq!(sig, "0xc8eced818b011433b5d486f9f0c97c8d0180a0df042bcaf1e75a7cd20d66920a5bbc4901bd90353fc62828ed2a821a801440f294779fc402033bf92c7657c30600");
+    #[test]
+    fn verify_secp256k1() {
+        let sk = hex::decode("c842e1ef9ece7e992a4021423a58d6e89c751881e43fd7dbebe70f932ad493e2").unwrap();
+        let message = hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
+        let signature = String::from("0xc8eced818b011433b5d486f9f0c97c8d0180a0df042bcaf1e75a7cd20d66920a5bbc4901bd90353fc62828ed2a821a801440f294779fc402033bf92c7657c3061b");
+
+        let keypair = KeyPair::from_secret_key(&sk, Cryptography::Secp256k1);
+        let b = KeyPair::verify(&keypair, &message, &signature);
+        assert_eq!(b, true);
+    }
+
+    #[test]
+    fn verify_sm2p256v1() {
+        let sk = hex::decode("ae96ce342785f0a2663098336a42598eae814a5020433f193aca6c08af71a6a6").unwrap();
+        let message = hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
+        let signature = String::from("0xa7fd7d7675f3db3917dbf667ff6b981fc79fef75b51a2de6bd032fac4e06159e8cbf1fa9e84c8dc4fe6a5b9c01e45246b1bfb6a066c19f9e25d1185cba313374011bab3d01ceb5c070d2291bd15fa2087205cbce2cc68df51561d915956ed83ed5");
+
+        let keypair = KeyPair::from_secret_key(&sk, Cryptography::Sm2p256v1);
+        let b = keypair.verify(&message, &signature);
+        assert_eq!(b, true);
+    }
+
+    #[test]
+    fn verify_sm2p256v1_error() {
+        let sk = hex::decode("ae96ce342785f0a2663098336a42598eae814a5020433f193aca6c08af71a6a6").unwrap();
+        let message = hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
+        let signature = String::from("0xcbe07a7e27bf85586b152df99cf191163e666545720758b8f55e88b4478b00fa5756d1dd47ba0b7600e7f5b22c4495ae59e9e444d24152335b460c938f23741201d640e7d7f013c3559a14a0c7ec010bd2b25a177faffb6a9821659af43684233a");
+
+        let keypair = KeyPair::from_secret_key(&sk, Cryptography::Sm2p256v1);
+        let b = keypair.verify(&message, &signature);
+        assert_eq!(b, true);
     }
 
     #[test]
@@ -181,5 +258,19 @@ mod tests {
 
         let sig = KeyPair::sign(&key_pair, &data);
         assert_eq!(sig, "7ca02541f80886a0612ca05bf555a1092a888abe3a6e0674381fc6fbf5253cea24e4ea409d7833868176d8eb01c852f841024a728f35a697ec9d691d6b5e24dd015931ab5708c28403560b471e30e7f5c404bdeabea2e8e2d5d6cc4f1ca96ba4aa");
+    }
+
+    #[test]
+    fn sign_and_verify_sm2p256k1() {
+        let sk =
+            hex::decode("29d63245990076b0bbb33f7482beef21855a8d2197c8d076c2356c49e2a06322").unwrap();
+        let message =
+            hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
+
+        let key_pair = KeyPair::from_secret_key(&sk, Cryptography::Sm2p256v1);
+        let signature = key_pair.sign(&message);
+        println!("{}", signature);
+        let pass = key_pair.verify(&message, &signature);
+        assert_eq!(pass, true)
     }
 }

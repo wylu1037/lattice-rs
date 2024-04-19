@@ -10,7 +10,8 @@ members = [
     "core",
     "crypto",
     "model",
-    "wallet"
+    "wallet",
+    "rlp",
 ]
 
 [workspace.dependencies]
