@@ -12,7 +12,6 @@ members = [
     "model",
     "wallet",
     "rlp",
-    "abi",
 ]
 
 [workspace.dependencies]

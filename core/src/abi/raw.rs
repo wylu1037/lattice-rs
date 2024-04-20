@@ -249,6 +249,7 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
 mod tests {
     use super::*;
 
+    /// 解析ABI
     #[test]
     fn can_parse_raw_abi() {
         const ABI_STR: &str = include_str!("./verifier_abi.json");

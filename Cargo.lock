@@ -3,19 +3,6 @@
 version = 3
 
 [[package]]
-name = "abi"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "const-hex",
- "ethabi",
- "open-fastrlp",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -170,6 +157,15 @@ dependencies = [
 [[package]]
 name = "core"
 version = "0.1.0"
+dependencies = [
+ "bytes",
+ "const-hex",
+ "ethabi",
+ "open-fastrlp",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "cpufeatures"

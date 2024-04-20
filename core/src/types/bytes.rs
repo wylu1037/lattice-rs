@@ -42,7 +42,7 @@ impl Bytes {
     /// # Examples
     ///
     /// ```
-    /// use abi::types::Bytes;
+    /// use core::types::Bytes;
     ///
     /// let b = Bytes::new();
     /// assert_eq!(&b[..], b"");
@@ -60,7 +60,7 @@ impl Bytes {
     /// # Examples
     ///
     /// ```
-    /// use abi::types::Bytes;
+    /// use core::types::Bytes;
     ///
     /// let b = Bytes::from_static(b"hello");
     /// assert_eq!(&b[..], b"hello");
@@ -93,6 +93,7 @@ impl LowerHex for Bytes {
     }
 }
 
+/// is_empty
 impl Deref for Bytes {
     type Target = [u8];
 
@@ -187,11 +188,11 @@ impl PartialEq<bytes::Bytes> for Bytes {
 }
 
 impl Encodable for Bytes {
-    fn length(&self) -> usize {
-        self.0.length()
-    }
     fn encode(&self, out: &mut dyn bytes::BufMut) {
         self.0.encode(out)
+    }
+    fn length(&self) -> usize {
+        self.0.length()
     }
 }
 

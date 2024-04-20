@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::human_readable;
+use crate::abi::human_readable;
 
 #[derive(Error, Debug)]
 pub enum ParseError {

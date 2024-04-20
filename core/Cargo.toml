@@ -6,3 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ethabi = { version = "18.0.0", default-features = false, features = ["full-serde", "rlp"] }
+open-fastrlp = { version = "0.1.4", features = ["std", "derive", "ethereum-types"] }
+
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bytes = { workspace = true, features = ["serde"] }
+hex.workspace = true
