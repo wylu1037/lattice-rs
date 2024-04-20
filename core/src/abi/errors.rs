@@ -13,3 +13,11 @@ pub enum ParseError {
     #[error(transparent)]
     LexerError(#[from] human_readable::lexer::LexerError),
 }
+
+/// ABI codec related errors
+#[derive(Error, Debug)]
+pub enum AbiError {
+    /// Thrown when the ABI decoding fails
+    #[error(transparent)]
+    DecodingError(#[from] ethabi::Error)
+}
