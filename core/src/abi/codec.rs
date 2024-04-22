@@ -1,5 +1,5 @@
-use ethabi::Bytes;
 use crate::abi::errors::AbiError;
+use crate::types::Bytes;
 
 /// Trait for ABI encoding
 pub trait AbiEncode {

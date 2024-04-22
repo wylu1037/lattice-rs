@@ -1,12 +1,20 @@
-mod raw;
+/// human readable
+pub use human_readable::lexer::LexerError;
+/// raw
 pub use raw::{AbiObject, Component, Item, JsonAbi, RawAbi};
+/// token
+pub use token::InvalidOutputType;
+
+mod raw;
 
 mod errors;
 
+/// human readable
 mod human_readable;
+
+/// token
 mod token;
+
 mod struct_def;
 mod packed;
 mod codec;
-
-pub use human_readable::{lexer::LexerError};

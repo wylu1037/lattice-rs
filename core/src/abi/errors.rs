@@ -1,6 +1,7 @@
 use thiserror::Error;
 
-use crate::abi::human_readable;
+use crate::abi::{human_readable, InvalidOutputType};
+use crate::types::bytes::ParseBytesError;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -19,5 +20,15 @@ pub enum ParseError {
 pub enum AbiError {
     /// Thrown when the ABI decoding fails
     #[error(transparent)]
-    DecodingError(#[from] ethabi::Error)
+    DecodingError(#[from] ethabi::Error),
+
+    /// Thrown when detokenization an argument
+    #[error(transparent)]
+    DetokenizationError(#[from] InvalidOutputType),
+
+    #[error("missing or wrong function selector")]
+    WrongSelector,
+
+    #[error(transparent)]
+    ParseBytesError(#[from] ParseBytesError),
 }
