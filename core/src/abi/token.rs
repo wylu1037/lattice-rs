@@ -35,6 +35,17 @@ pub trait Tokenize {
     fn into_tokens(self) -> Vec<Token>;
 }
 
+impl<'a> Tokenize for &'a [Token] {
+    fn into_tokens(self) -> Vec<Token> {
+        let mut tokens = self.to_vec();
+        if tokens.len() == 1 {
+            flatten_token(tokens.pop().unwrap())
+        } else {
+            tokens
+        }
+    }
+}
+
 pub trait Tokenizable {
     /// Converts a `Token` into expected type.
     fn from_token(token: Token) -> Result<Self, InvalidOutputType>
@@ -42,4 +53,15 @@ pub trait Tokenizable {
 
     /// Converts a specified type back into token.
     fn into_token(self) -> Token;
+}
+
+/// Helper for flattening non-nested tokens into their inner types;
+///
+/// e.g. `(A,B,C)`would get tokenized to `Tuple([A,B,C])` when in fact we need `[A,B,C]`.
+fn flatten_token(token: Token) -> Vec<Token> {
+    /// flatten the tokens if required and there is no nesting
+    match token {
+        Token::Tuple(inner) => inner,
+        token => vec![token]
+    }
 }
