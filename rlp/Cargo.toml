@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 open-fastrlp = { version = "0.1.4", features = ["std", "derive", "ethereum-types"] }
 rlp = { version = "0.5", features = ["derive"] }
+serde = { version = "1.0.198", features = ["derive"] }

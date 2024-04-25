@@ -730,6 +730,7 @@ version = "0.1.0"
 dependencies = [
  "open-fastrlp",
  "rlp 0.5.2",
+ "serde",
 ]
 
 [[package]]
