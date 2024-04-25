@@ -1,5 +1,6 @@
-use crate::abi::errors::AbiError;
-use crate::types::Bytes;
+use crate::abi::Detokenize;
+use crate::abi::error::AbiError;
+use crate::types::{Bytes, H256, U128, U256};
 
 /// Trait for ABI encoding
 pub trait AbiEncode {
@@ -28,3 +29,48 @@ pub trait AbiDecode: Sized {
         Self::decode(bytes)
     }
 }
+
+macro_rules! impl_abi_codec {
+    ($($name:ty),*) => {
+        $(
+            impl AbiEncode for $name {
+                fn encode(self) -> Vec<u8> {
+                    let token = self.into_token();
+                    crate::abi::encode(&[token]).into()
+                }
+            }
+            impl AbiDecode for $name {
+                fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, AbiError> {
+                    let tokens = crate::abi::decode(
+                        $[Self::param_type()], bytes.as_ref()
+                    )?;
+                    Ok(<Self as Detokenize>::from_tokens(tokens)?)
+                }
+            }
+        )*
+    };
+}
+
+impl_abi_codec!(
+    Vec<u8>,
+    Bytes,
+    bytes::Bytes,
+    // Address,
+    bool,
+    String,
+    H256,
+    U128,
+    U256,
+    // I256,
+    // Uint8,
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128
+);

@@ -46,15 +46,35 @@ impl<'a> Tokenize for &'a [Token] {
     }
 }
 
+impl<T: Tokenizable> Tokenize for T {
+    fn into_tokens(self) -> Vec<Token> {
+        flatten_token(self.into_token())
+    }
+}
+
+impl Tokenize for () {
+    fn into_tokens(self) -> Vec<Token> {
+        vec![]
+    }
+}
+
+/// Simplified output type for single value.
 pub trait Tokenizable {
     /// Converts a `Token` into expected type.
     fn from_token(token: Token) -> Result<Self, InvalidOutputType>
-        where Self: Sized;
+        where
+            Self: Sized;
 
     /// Converts a specified type back into token.
     fn into_token(self) -> Token;
 }
 
+/// todo
+macro_rules! impl_tuples {
+    ($num:expr, $($ty:ident:$no:tt),+$(,)?) => {
+
+    };
+}
 /// Helper for flattening non-nested tokens into their inner types;
 ///
 /// e.g. `(A,B,C)`would get tokenized to `Tuple([A,B,C])` when in fact we need `[A,B,C]`.
