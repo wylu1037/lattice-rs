@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PhantomPinned};
 
 use bytes::BufMut;
 use open_fastrlp::{Header, length_of_length};
@@ -94,5 +94,57 @@ impl<T: ?Sized> Encodable for PhantomData<T> {
     #[inline]
     fn length(&self) -> usize {
         0
+    }
+}
+
+impl Encodable for PhantomPinned {
+    #[inline]
+    fn encode(&self, out: &mut dyn BufMut) {}
+
+    #[inline]
+    fn length(&self) -> usize {
+        0
+    }
+}
+
+impl<const N: usize> Encodable for [u8; N] {
+    #[inline]
+    fn encode(&self, out: &mut dyn BufMut) {
+        self[..].encode(out)
+    }
+
+    #[inline]
+    fn length(&self) -> usize {
+        self[..].length()
+    }
+}
+
+unsafe impl<const N: usize> MaxEncodedLenAssoc for [u8; N] {
+    const LEN: usize = N + length_of_length(N);
+}
+
+impl Encodable for str {
+    #[inline]
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.as_bytes().encode(out)
+    }
+
+    #[inline]
+    fn length(&self) -> usize {
+        self.as_bytes().length()
+    }
+}
+
+impl Encodable for bool {
+    #[inline]
+    fn encode(&self, out: &mut dyn BufMut) {
+        // inlined `(*self as u8).encode(out)`
+        out.put_u8(if *self { 1 } else { EMPTY_STRING_CODE })
+    }
+
+    #[inline]
+    fn length(&self) -> usize {
+        // a `bool` is always `< EMPTY_STRING_CODE`
+        1
     }
 }
