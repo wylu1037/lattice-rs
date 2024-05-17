@@ -59,6 +59,8 @@ macro_rules! impl_max_encoded_len {
     };
 }
 
+impl_max_encoded_len!(bool, <u8 as MaxEncodedLenAssoc>::LEN);
+
 macro_rules! to_be_bytes_trimmed {
     ($be:ident, $x:expr) => {{
         $be = $x.to_be_bytes();
