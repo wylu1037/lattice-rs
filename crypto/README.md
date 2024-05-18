@@ -52,6 +52,15 @@
 + 与NIST P-256曲线相似，使用的参数是确定的。
 + 采用的曲线方程为：y<sup>2</sup> = x<sup>3</sup> + ax + b，其中参数 a 和 b 由标准规定。
 
+## KDF
+
+密钥导出函数(Key derivation function, KDF)。
+
+### 生成地址和密钥对
+
+KDFs在区块链系统中用于从种子（seed）或助记词（mnemonic phrase）生成一系列密钥对和地址。例如，在比特币或以太坊中，BIP-32和BIP-39标准使用KDFs生成层级确定性钱包（HD
+wallets），从而允许用户从一个种子生成多个密钥对。
+
 ## 名词
 
 + ECC, Elliptic Curve Cryptography: 椭圆曲线密码学
