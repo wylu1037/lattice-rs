@@ -11,3 +11,21 @@ pub struct TBlock {
     parent_hash: String,
     daemon_hash: String,
 }
+
+/// 交易
+pub struct Transaction {
+    number: u64,
+    parent_hash: String,
+    daemon_hash: String,
+    payload: String,
+    hub: Vec<String>,
+    timestamp: u64,
+    tx_type: String,
+    owner: String,
+    linker: String,
+    code: String,
+    amount: String,
+    joule: u64,
+    sign: String,
+    proof_of_work: String,
+}
