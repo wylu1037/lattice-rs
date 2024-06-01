@@ -5,6 +5,7 @@ pub mod sign;
 pub mod model;
 
 pub mod address;
+pub mod aes;
 
 #[cfg(test)]
 mod tests {

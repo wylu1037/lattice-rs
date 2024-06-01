@@ -158,7 +158,7 @@ impl KeyPair {
     }
 
     /// # 获取地址
-    fn address(&self) -> String {
+    pub fn address(&self) -> String {
         let key_encode = &hex::encode(&self.public_key)[2..];
         let key_decode = hex::decode(key_encode).unwrap();
         public_key_to_address(&key_decode, self.cryptography)
