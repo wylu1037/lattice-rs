@@ -12,11 +12,14 @@ members = [
     "model",
     "wallet",
     "rlp",
+    "lattice",
+    "mnemonic",
+    "abi",
 ]
 
 [workspace.dependencies]
 core = { version = "0.1.0", path = "core", default-features = false }
-crypto = { version = "" }
+crypto = { version = "0.5.1" }
 
 thiserror = "1.0"
 serde = "1.0"
