@@ -79,9 +79,16 @@ impl FileKey {
     }
 }
 
+/// # 生成 Cipher
+/// ## Parameters
+/// + `secret_key: &[u8]`: 私钥
+/// + `password: &[u8]`: 密码
+/// + `cryptography: Cryptography`:
+///
+/// ## Returns
+/// + `Cipher`: struct
 fn gen_cipher(secret_key: &[u8], password: &[u8], cryptography: Cryptography) -> Cipher {
-    let salt_bytes = random::<[u8; 32]>();
-    let salt = hex::encode(salt_bytes);
+    let salt = hex::encode(random::<[u8; 32]>());
     let iv_bytes = random::<[u8; 16]>();
     let iv = hex::encode(iv_bytes);
     let key = scrypt_key(password, &salt);
