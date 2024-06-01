@@ -1,7 +1,7 @@
-use std::any::Any;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
 /// 回执
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Receipt {
     contract_address: String,
     contract_ret: String,
@@ -16,7 +16,16 @@ pub struct Receipt {
 }
 
 /// 事件
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Event {
-    name: String,
-    fields: HashMap<String, Box<dyn Any>>,
+    address: String, // address of the contract that generated the event
+    topics: Vec<String>,// list of topics provided by the contract
+    data: Vec<u8>, // supplied by the contract, usually ABI-encoded
+    #[serde(rename = "logIndex")]
+    index: u32, // index of the log in the block
+    #[serde(rename = "dblockNumber")]
+    daemon_block_height: u64,
+    removed: bool,
+    #[serde(rename = "dataHex")]
+    data_hex: String,
 }

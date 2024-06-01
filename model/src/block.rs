@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 /// 最新的账户区块和守护区块信息
 pub struct CurrentTDBlock {
     current_dblock_hash: String,
@@ -28,4 +30,14 @@ pub struct Transaction {
     joule: u64,
     sign: String,
     proof_of_work: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DBlock {
+    #[serde(rename = "parentHash")]
+    parent_hash: String,
+    #[serde(rename = "number")]
+    height: u64,
+    timestamp: u64,
+    version: u8,
 }
