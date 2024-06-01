@@ -6,6 +6,8 @@ use once_cell::sync::Lazy;
 use secp256k1::{All, Message, PublicKey, rand::rngs::OsRng, Secp256k1, SecretKey};
 use secp256k1::ecdsa::Signature as SigNist;
 
+use crate::public_key_to_address;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Cryptography {
     /// 国际算法
@@ -81,12 +83,12 @@ impl KeyPair {
         }
     }
 
-    /// 签名
-    /// # 入参
-    /// message 待签名的消息
+    /// # 签名
+    /// ## 入参
+    /// + `message: &[u8]`: 待签名的消息
     ///
-    /// # 出参
-    /// signature 签名结果
+    /// ## 出参
+    /// + `String`: signature 签名结果
     pub fn sign(&self, message: &[u8]) -> String {
         match self.cryptography {
             Cryptography::Secp256k1 => {
@@ -119,7 +121,7 @@ impl KeyPair {
         }
     }
 
-    /// 验签
+    /// # 验签
     pub fn verify(&self, message: &[u8], signature: &str) -> bool {
         match self.cryptography {
             Cryptography::Secp256k1 => {
@@ -145,7 +147,7 @@ impl KeyPair {
         }
     }
 
-    /// 只获取签名中的r、s
+    /// # 只获取签名中的r、s
     fn get_clean_signature_hex(signature: &str) -> &str {
         let hex_str = if signature.starts_with("0x") {
             &signature[2..]
@@ -153,6 +155,13 @@ impl KeyPair {
             signature
         };
         &hex_str[..hex_str.len().min(128)]
+    }
+
+    /// # 获取地址
+    fn address(&self) -> String {
+        let key_encode = &hex::encode(&self.public_key)[2..];
+        let key_decode = hex::decode(key_encode).unwrap();
+        public_key_to_address(&key_decode, self.cryptography)
     }
 }
 

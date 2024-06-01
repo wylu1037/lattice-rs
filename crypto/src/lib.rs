@@ -1,5 +1,10 @@
+pub use address::public_key_to_address;
+pub use model::HexString;
+
 pub mod sign;
-mod model;
+pub mod model;
+
+pub mod address;
 
 #[cfg(test)]
 mod tests {
