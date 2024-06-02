@@ -7,6 +7,7 @@ use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
 
@@ -18,7 +19,7 @@ use crate::constants::JSON_RPC;
 
 /// 定义一个异步的客户端trait
 #[async_trait]
-pub trait LatticeClient {
+pub trait HttpRequest {
     async fn send(&self, message: &str) -> Result<String, Box<dyn Error>>;
 }
 
@@ -114,7 +115,7 @@ impl HttpClient {
 }
 
 #[async_trait]
-impl LatticeClient for HttpClient {
+impl HttpRequest for HttpClient {
     async fn send(&self, message: &str) -> Result<String, Box<dyn Error>> {
         let res = self.client.post(&self.url)
             .body(message.to_string())
@@ -127,7 +128,13 @@ impl LatticeClient for HttpClient {
     }
 }
 
+#[async_trait]
+pub trait WsRequest {
+    async fn send(&self, message: &str, sender: mpsc::Sender<String>);
+}
+
 /// Websocket客户端
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WsClient {
     ip: String,
     port: u16,
@@ -151,42 +158,37 @@ impl WsClient {
 }
 
 #[async_trait]
-impl LatticeClient for WsClient {
-    async fn send(&self, message: &str) -> Result<String, Box<dyn Error>> {
-        let mut ws_stream = self.connect().await?;
+impl WsRequest for WsClient {
+    async fn send(&self, message: &str, sender: mpsc::Sender<String>) {
+        let mut ws_stream = self.connect().await.unwrap();
         let (mut write, mut read) = ws_stream.split();
 
         let message = Message::Text(message.to_string());
         write.send(message).await.expect("Failed to send message");
 
-        /*while let Some(message) = read.next().await {
-            match message {
-                Ok(message) => println!("message {}", message),
-                Err(err) => println!("err {}", err),
-            }
-        }*/
-        for i in 1..5 {
-            let s = read.next().await;
-            match s {
-                Some(r) => {
-                    match r {
-                        Ok(m) => println!("{}", m.to_string()),
-                        Err(e) => println!("{}", e)
+        while let Some(msg) = read.next().await {
+            match msg {
+                Ok(message) => {
+                    let future = sender.send(message.to_string());
+                    match future.await {
+                        Ok(_) => println!("Success send message {} to channel", message),
+                        Err(e) => println!("Failed send message to channel, err {}", e)
                     }
                 }
-                None => println!("什么都没有")
+                Err(e) => println!("Failed receive message, err {}", e)
             }
         }
-
-        Ok("1".to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use std::time::Duration;
 
-    use crate::client::{HttpClient, JsonRpcBody, LatticeClient, WsClient};
+    use serde_json::json;
+    use tokio::sync::mpsc;
+
+    use crate::client::{HttpClient, JsonRpcBody, WsClient, WsRequest};
 
     #[tokio::test]
     async fn test_get_current_daemon_block() {
@@ -206,10 +208,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn monitor_data() {
-        let client = WsClient::new("192.168.1.185", 12999);
+    async fn test_monitor_data() {
+        let (sender, mut receiver) = mpsc::channel(10);
         let body = JsonRpcBody::new("latc_subscribe".to_string(), vec![json!("monitorData")]);
         let message = serde_json::to_string(&body).unwrap();
-        let _ = client.send(message.as_str()).await;
+        let send_handler = tokio::spawn(async move { WsClient::new("192.168.1.185", 12999).send(message.as_str(), sender).await });
+
+        let consumer_handler = tokio::spawn(async move {
+            while let Some(msg) = receiver.recv().await {
+                println!("Start consumer channel message {}", msg);
+            }
+        });
+
+        tokio::time::sleep(Duration::from_secs(90)).await;
+        println!("{:?}", "🎉🎉🎉");
     }
 }
