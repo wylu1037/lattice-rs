@@ -2,6 +2,7 @@ use std::error::Error;
 
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
+use futures_util::stream::{SplitSink, SplitStream};
 use reqwest::{Client, Url};
 use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
@@ -141,6 +142,10 @@ pub struct WsClient {
     url: String,
 }
 
+// type alias
+type WsWrite = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+type WsRead = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+
 impl WsClient {
     pub fn new(ip: &str, port: u16) -> Self {
         WsClient {
@@ -151,17 +156,39 @@ impl WsClient {
     }
 
     /// 建立websocket连接
-    async fn connect(&self) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn Error>> {
+    async fn connect_ws(&self) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn Error>> {
         let (ws_stream, _) = connect_async(Url::parse(&self.url).unwrap()).await.expect("Failed to build ws connect");
         Ok(ws_stream)
+    }
+
+    /// 建立websocket连接
+    async fn connect(&self) -> (WsWrite, WsRead) {
+        let (ws_stream, _) = connect_async(Url::parse(&self.url).unwrap()).await.expect("Failed to build ws connect");
+        let (mut write, mut read) = ws_stream.split();
+        (write, read)
+    }
+
+    /// # 断开websocket连接
+    /// ## Parameters
+    ///
+    /// ## Returns
+    /// + bool: 是否成功关闭websocket连接
+    pub async fn disconnect(mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>) -> bool {
+        let result = write.send(Message::Close(None)).await;
+        match result {
+            Ok(result_) => true,
+            Err(e) => {
+                eprintln!("{}", e);
+                false
+            }
+        }
     }
 }
 
 #[async_trait]
 impl WsRequest for WsClient {
     async fn send(&self, message: &str, sender: mpsc::Sender<String>) {
-        let mut ws_stream = self.connect().await.unwrap();
-        let (mut write, mut read) = ws_stream.split();
+        let (mut write, mut read) = self.connect().await;
 
         let message = Message::Text(message.to_string());
         write.send(message).await.expect("Failed to send message");
@@ -220,7 +247,7 @@ mod tests {
             }
         });
 
-        tokio::time::sleep(Duration::from_secs(90)).await;
+        tokio::time::sleep(Duration::from_secs(10)).await;
         println!("{:?}", "🎉🎉🎉");
     }
 }
