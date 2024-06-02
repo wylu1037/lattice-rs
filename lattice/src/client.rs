@@ -1,10 +1,14 @@
 use std::error::Error;
 
 use async_trait::async_trait;
-use reqwest::Client;
+use futures_util::{SinkExt, StreamExt};
+use reqwest::{Client, Url};
 use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::net::TcpStream;
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::tungstenite::Message;
 
 use model::block::DBlock;
 use model::LatticeError;
@@ -124,11 +128,65 @@ impl LatticeClient for HttpClient {
 }
 
 /// Websocket客户端
-pub struct WsClient {}
+pub struct WsClient {
+    ip: String,
+    port: u16,
+    url: String,
+}
+
+impl WsClient {
+    pub fn new(ip: &str, port: u16) -> Self {
+        WsClient {
+            ip: ip.to_string(),
+            port,
+            url: format!("ws://{}:{}", ip, port),
+        }
+    }
+
+    /// 建立websocket连接
+    async fn connect(&self) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn Error>> {
+        let (ws_stream, _) = connect_async(Url::parse(&self.url).unwrap()).await.expect("Failed to build ws connect");
+        Ok(ws_stream)
+    }
+}
+
+#[async_trait]
+impl LatticeClient for WsClient {
+    async fn send(&self, message: &str) -> Result<String, Box<dyn Error>> {
+        let mut ws_stream = self.connect().await?;
+        let (mut write, mut read) = ws_stream.split();
+
+        let message = Message::Text(message.to_string());
+        write.send(message).await.expect("Failed to send message");
+
+        /*while let Some(message) = read.next().await {
+            match message {
+                Ok(message) => println!("message {}", message),
+                Err(err) => println!("err {}", err),
+            }
+        }*/
+        for i in 1..5 {
+            let s = read.next().await;
+            match s {
+                Some(r) => {
+                    match r {
+                        Ok(m) => println!("{}", m.to_string()),
+                        Err(e) => println!("{}", e)
+                    }
+                }
+                None => println!("什么都没有")
+            }
+        }
+
+        Ok("1".to_string())
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::client::HttpClient;
+    use serde_json::json;
+
+    use crate::client::{HttpClient, JsonRpcBody, LatticeClient, WsClient};
 
     #[tokio::test]
     async fn test_get_current_daemon_block() {
@@ -145,5 +203,13 @@ mod tests {
             Ok(receipt) => println!("{:?}", receipt),
             Err(err) => println!("{:?}", err.to_string())
         }
+    }
+
+    #[tokio::test]
+    async fn monitor_data() {
+        let client = WsClient::new("192.168.1.185", 12999);
+        let body = JsonRpcBody::new("latc_subscribe".to_string(), vec![json!("monitorData")]);
+        let message = serde_json::to_string(&body).unwrap();
+        let _ = client.send(message.as_str()).await;
     }
 }
