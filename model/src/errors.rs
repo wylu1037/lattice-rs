@@ -31,7 +31,7 @@ macro_rules! create_error {
     };
 }
 
-/// 使用宏来定义自定义错误类型
+// 使用宏来定义自定义错误类型
 create_error!(BusinessError,
     NotFound => ("Resource not found", "资源未找到"),
     Unauthorized => ("Unauthorized access", "未经授权的访问"),

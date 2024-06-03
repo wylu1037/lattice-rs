@@ -8,7 +8,8 @@ use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
 
@@ -42,6 +43,21 @@ impl JsonRpcBody {
             method,
             params,
         }
+    }
+
+    pub fn new_ws_monitor() -> String {
+        let body = JsonRpcBody::new("latc_subscribe".to_string(), vec![json!("monitorData")]);
+        serde_json::to_string(&body).unwrap()
+    }
+
+    pub fn new_ws_transaction_block() -> String {
+        let body = JsonRpcBody::new("latc_subscribe".to_string(), vec![json!("newTBlock")]);
+        serde_json::to_string(&body).unwrap()
+    }
+
+    pub fn new_ws_daemon_block() -> String {
+        let body = JsonRpcBody::new("latc_subscribe".to_string(), vec![json!("newDBlock")]);
+        serde_json::to_string(&body).unwrap()
     }
 }
 
@@ -131,41 +147,74 @@ impl HttpRequest for HttpClient {
 
 #[async_trait]
 pub trait WsRequest {
-    async fn send(&self, message: &str, sender: mpsc::Sender<String>);
+    async fn send(&self, write: WsWrite, message: &str);
 }
 
 /// Websocket客户端
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct WsClient {
-    ip: String,
-    port: u16,
-    url: String,
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct WsClient<'a> {
+    ip: &'a str, // ip address
+    port: u16, // websocket port
 }
 
 // type alias
 type WsWrite = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 type WsRead = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
-impl WsClient {
-    pub fn new(ip: &str, port: u16) -> Self {
+impl<'a> WsClient<'a> {
+    pub fn new(ip: &'a str, port: u16) -> Self {
         WsClient {
-            ip: ip.to_string(),
+            ip,
             port,
-            url: format!("ws://{}:{}", ip, port),
         }
     }
 
-    /// 建立websocket连接
-    async fn connect_ws(&self) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn Error>> {
-        let (ws_stream, _) = connect_async(Url::parse(&self.url).unwrap()).await.expect("Failed to build ws connect");
-        Ok(ws_stream)
+    /// 获取websocket连接地址
+    pub fn get_ws_conn_url(&self) -> String {
+        return format!("ws://{}:{}", self.ip, self.port);
     }
 
     /// 建立websocket连接
     async fn connect(&self) -> (WsWrite, WsRead) {
-        let (ws_stream, _) = connect_async(Url::parse(&self.url).unwrap()).await.expect("Failed to build ws connect");
+        let (ws_stream, _) = connect_async(Url::parse(self.get_ws_conn_url().as_str()).unwrap()).await.expect("Failed to build ws connect");
         let (mut write, mut read) = ws_stream.split();
         (write, read)
+    }
+
+    /// # 接收消息流
+    /// ## Parameters
+    /// + `mut read: WsRead`
+    /// + `sender: Sender<String>`
+    ///
+    /// ## Returns
+    async fn receive(mut read: WsRead, sender: Sender<String>) {
+        while let Some(msg) = read.next().await {
+            match msg {
+                Ok(message) => {
+                    let future = sender.send(message.to_string());
+                    match future.await {
+                        Ok(_) => println!("Success send message {} to channel", message),
+                        Err(e) => println!("Failed send message to channel, err {}", e)
+                    }
+                }
+                Err(e) => println!("Failed receive message, err {}", e)
+            }
+        }
+    }
+
+    /// # 从channel中消费消息
+    /// ## Parameters
+    /// + `mut receiver: Receiver<String>`: a channel receiver
+    /// + `processor: F`: F is a closures, signature is Fn(String)
+    ///
+    /// ## Returns
+    async fn consumer<F>(mut receiver: Receiver<String>, processor: F)
+        where
+            F: Fn(String) + Send + 'static,
+    {
+        while let Some(msg) = receiver.recv().await {
+            processor(msg)
+        }
     }
 
     /// # 断开websocket连接
@@ -186,25 +235,16 @@ impl WsClient {
 }
 
 #[async_trait]
-impl WsRequest for WsClient {
-    async fn send(&self, message: &str, sender: mpsc::Sender<String>) {
-        let (mut write, mut read) = self.connect().await;
-
+impl<'a> WsRequest for WsClient<'a> {
+    /// # 发送消息
+    /// ## Parameters
+    /// + `mut write: WsWrite`: ws write
+    /// + `message: &str`: 消息
+    ///
+    /// ## Returns
+    async fn send(&self, mut write: WsWrite, message: &str) {
         let message = Message::Text(message.to_string());
         write.send(message).await.expect("Failed to send message");
-
-        while let Some(msg) = read.next().await {
-            match msg {
-                Ok(message) => {
-                    let future = sender.send(message.to_string());
-                    match future.await {
-                        Ok(_) => println!("Success send message {} to channel", message),
-                        Err(e) => println!("Failed send message to channel, err {}", e)
-                    }
-                }
-                Err(e) => println!("Failed receive message, err {}", e)
-            }
-        }
     }
 }
 
@@ -212,7 +252,6 @@ impl WsRequest for WsClient {
 mod tests {
     use std::time::Duration;
 
-    use serde_json::json;
     use tokio::sync::mpsc;
 
     use crate::client::{HttpClient, JsonRpcBody, WsClient, WsRequest};
@@ -236,18 +275,27 @@ mod tests {
 
     #[tokio::test]
     async fn test_monitor_data() {
+        // create multi-producer single-consumer channel
         let (sender, mut receiver) = mpsc::channel(10);
-        let body = JsonRpcBody::new("latc_subscribe".to_string(), vec![json!("monitorData")]);
-        let message = serde_json::to_string(&body).unwrap();
-        let send_handler = tokio::spawn(async move { WsClient::new("192.168.1.185", 12999).send(message.as_str(), sender).await });
+        let mut client = WsClient::new("192.168.1.185", 12999);
 
-        let consumer_handler = tokio::spawn(async move {
-            while let Some(msg) = receiver.recv().await {
-                println!("Start consumer channel message {}", msg);
-            }
+        let (write, read) = client.connect().await;
+
+        let send_handler = tokio::spawn(async move {
+            client.send(write, JsonRpcBody::new_ws_monitor().as_str()).await;
+        });
+        let receive_handler = tokio::spawn(async move {
+            WsClient::receive(read, sender).await;
         });
 
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::spawn(async move {
+            WsClient::consumer(receiver, |msg| println!("START {}", msg)).await
+        });
+
+        tokio::time::sleep(Duration::from_secs(30)).await;
         println!("{:?}", "🎉🎉🎉");
     }
+
+    #[tokio::test]
+    async fn test_monitor_daemon_block() {}
 }
