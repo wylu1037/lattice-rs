@@ -1,7 +1,7 @@
 use aes::Aes128Ctr;
 use aes::cipher::{NewCipher, StreamCipher, StreamCipherSeek};
 
-use crate::HexString;
+use model::HexString;
 
 /// # Aes encrypt, 16 byte = 128 bit
 /// ## Parameters
@@ -28,7 +28,7 @@ pub fn encrypt(data: &[u8], key: &[u8], iv: &[u8]) -> String {
 /// + String: source
 pub fn decrypt(cipher_text: &str, key: &[u8], iv: &[u8]) -> String {
     let mut cipher = Aes128Ctr::new_from_slices(key, iv).unwrap();
-    let h = HexString { hex: String::from(cipher_text) };
+    let h = HexString { hex_string: String::from(cipher_text) };
     let mut buffer = h.decode();
     cipher.seek(0);
     cipher.apply_keystream(&mut buffer);

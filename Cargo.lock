@@ -275,6 +275,7 @@ dependencies = [
  "bs58",
  "hex",
  "libsm",
+ "model",
  "num-bigint",
  "once_cell",
  "rand",
@@ -705,7 +706,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f28220f89297a075ddc7245cd538076ee98b01f2a9c23a53a4f1105d5a322808"
 dependencies = [
- "rlp 0.5.2",
+ "rlp",
 ]
 
 [[package]]
@@ -891,8 +892,14 @@ version = "0.1.0"
 name = "model"
 version = "0.1.0"
 dependencies = [
+ "bs58",
+ "hex",
+ "num-bigint",
+ "rlp",
+ "rlp-derive",
  "serde",
  "serde_json",
+ "sha256",
  "thiserror",
 ]
 
@@ -915,11 +922,10 @@ dependencies = [
 
 [[package]]
 name = "num-bigint"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "608e7659b5c3d7cba262d894801b9ec9d00de989e8a82bd4bef91d08da45cdc0"
+checksum = "c165a9ab64cf766f73521c0dd2cfdff64f488b8f0b3e621face3462d3db536d7"
 dependencies = [
- "autocfg",
  "num-integer",
  "num-traits",
 ]
@@ -1358,22 +1364,11 @@ dependencies = [
 
 [[package]]
 name = "rlp"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "open-fastrlp",
- "rlp 0.5.2",
- "serde",
-]
-
-[[package]]
-name = "rlp"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb919243f34364b6bd2fc10ef797edbfa75f33c252e7998527479c6d6b47e1ec"
 dependencies = [
  "bytes",
- "rlp-derive",
  "rustc-hex",
 ]
 
@@ -2035,6 +2030,7 @@ version = "0.1.0"
 dependencies = [
  "crypto",
  "hex",
+ "model",
  "rand",
  "scrypt",
  "serde",

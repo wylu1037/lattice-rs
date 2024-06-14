@@ -6,15 +6,9 @@ use once_cell::sync::Lazy;
 use secp256k1::{All, Message, PublicKey, rand::rngs::OsRng, Secp256k1, SecretKey};
 use secp256k1::ecdsa::Signature as SigNist;
 
-use crate::public_key_to_address;
+use model::enums::Cryptography;
 
-#[derive(Debug, Clone, Copy)]
-pub enum Cryptography {
-    /// 国际算法
-    Secp256k1,
-    /// 国密算法
-    Sm2p256v1,
-}
+use crate::public_key_to_address;
 
 #[derive(Debug)]
 pub struct KeyPair {
@@ -181,6 +175,8 @@ pub fn hash_message(message: &[u8], cryptography: Cryptography) -> String {
 
 #[cfg(test)]
 mod tests {
+    use model::enums::Cryptography;
+
     use super::*;
 
     #[test]

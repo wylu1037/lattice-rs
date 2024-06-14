@@ -4,8 +4,10 @@ use scrypt::password_hash::{PasswordHasher, SaltString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crypto::{aes, HexString};
-use crypto::sign::{Cryptography, hash_message, KeyPair};
+use crypto::aes;
+use crypto::sign::{hash_message, KeyPair};
+use model::Cryptography;
+use model::HexString;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FileKey {
@@ -124,7 +126,7 @@ fn gen_cipher(secret_key: &[u8], password: &[u8], cryptography: Cryptography) ->
 /// ## Returns
 /// + `String`: 十六进制编码的 Scrypt 密钥
 fn scrypt_key(password: &[u8], salt: &str) -> String {
-    let h = HexString { hex: String::from(salt) };
+    let h = HexString { hex_string: String::from(salt) };
     let salt_bytes = h.decode();
     let salt_str = SaltString::encode_b64(&salt_bytes).unwrap();
     let params = Params::new(18, 8, 1, 32).unwrap();
@@ -142,7 +144,7 @@ fn scrypt_key(password: &[u8], salt: &str) -> String {
 /// ## Returns
 /// + String
 fn compute_mac(key: &[u8], cipher_text: &str, cryptography: Cryptography) -> String {
-    let h = HexString { hex: String::from(cipher_text) };
+    let h = HexString { hex_string: String::from(cipher_text) };
     let cipher_bytes = h.decode();
     let data = [key, &cipher_bytes].concat();
     hash_message(&data, cryptography)
@@ -150,14 +152,14 @@ fn compute_mac(key: &[u8], cipher_text: &str, cryptography: Cryptography) -> Str
 
 #[cfg(test)]
 mod tests {
-    use crypto::HexString;
-    use crypto::sign::Cryptography;
+    use model::Cryptography;
+    use model::HexString;
 
     use crate::file_key::FileKey;
 
     #[test]
     fn test_gen_file_key() {
-        let secret_key = HexString { hex: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb") };
+        let secret_key = HexString { hex_string: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb") };
         let file_key = FileKey::from_secret_key(secret_key.decode().as_slice(), b"Root1234", Cryptography::Sm2p256v1);
         match serde_json::to_string(&file_key) {
             Ok(json_string) => println!("{}", json_string),

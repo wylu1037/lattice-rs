@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+model = { path = "../model" }
 num-bigint = "0.4.4"
 once_cell = "1.9.0"
 libsm = "0.6.0"

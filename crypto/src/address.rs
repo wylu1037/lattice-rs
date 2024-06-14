@@ -1,6 +1,8 @@
 use sha256::digest;
 
-use crate::sign::{Cryptography, hash_message};
+use model::Cryptography;
+
+use crate::sign::hash_message;
 
 /// # 公钥转地址
 /// ## 入参
@@ -48,13 +50,14 @@ pub fn lattice_to_eth(addr: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::HexString;
+    use model::enums::Cryptography;
+    use model::HexString;
 
     use super::*;
 
     #[test]
     fn test_public_key_to_address() {
-        let pk = HexString { hex: String::from("0xaaa53093e7fc18c3335876afc3aa604cf624cf7091685f42e09ee69cab3a6bcee8e0297eda17b6d8d3bfda8cc44945304ffb8bc40b5b7ff47e132c0c3fa0bd7f") };
+        let pk = HexString { hex_string: String::from("0xaaa53093e7fc18c3335876afc3aa604cf624cf7091685f42e09ee69cab3a6bcee8e0297eda17b6d8d3bfda8cc44945304ffb8bc40b5b7ff47e132c0c3fa0bd7f") };
         let addr = public_key_to_address(pk.decode().as_slice(), Cryptography::Sm2p256v1);
         assert_eq!(String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi"), addr)
     }
