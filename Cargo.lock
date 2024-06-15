@@ -279,7 +279,11 @@ dependencies = [
  "num-bigint",
  "once_cell",
  "rand",
+ "rlp",
+ "rlp-derive",
  "secp256k1",
+ "serde",
+ "serde_json",
  "sha256",
 ]
 
@@ -895,8 +899,6 @@ dependencies = [
  "bs58",
  "hex",
  "num-bigint",
- "rlp",
- "rlp-derive",
  "serde",
  "serde_json",
  "sha256",

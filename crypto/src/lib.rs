@@ -1,11 +1,12 @@
 pub use address::public_key_to_address;
-pub use model::HexString;
 
 pub mod sign;
 pub mod model;
 
 pub mod address;
 pub mod aes;
+mod transaction;
+pub mod hash;
 
 #[cfg(test)]
 mod tests {

@@ -1,6 +1,5 @@
 use libsm::sm2::ecc::EccCtx;
 use libsm::sm2::signature::{SigCtx, Signature};
-use libsm::sm3::hash::Sm3Hash;
 use num_bigint::BigUint;
 use once_cell::sync::Lazy;
 use secp256k1::{All, Message, PublicKey, rand::rngs::OsRng, Secp256k1, SecretKey};
@@ -159,23 +158,12 @@ impl KeyPair {
     }
 }
 
-/// 哈希
-pub fn hash_message(message: &[u8], cryptography: Cryptography) -> String {
-    match cryptography {
-        Cryptography::Secp256k1 => {
-            sha256::digest(message)
-        }
-        Cryptography::Sm2p256v1 => {
-            let mut hash = Sm3Hash::new(message);
-            let digest = hash.get_hash().to_vec();
-            hex::encode(digest)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use model::enums::Cryptography;
+    use model::HexString;
+
+    use crate::hash::hash_message;
 
     use super::*;
 
@@ -206,11 +194,9 @@ mod tests {
 
     #[test]
     fn sign_and_verify_secp256k1() {
-        let sk =
-            hex::decode("c842e1ef9ece7e992a4021423a58d6e89c751881e43fd7dbebe70f932ad493e2").unwrap();
+        let sk = HexString::new("0xc842e1ef9ece7e992a4021423a58d6e89c751881e43fd7dbebe70f932ad493e2").decode();
         let message =
-            hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
-
+            hex::decode("0102030405060708010203040506070801020304050607080102030405060708").unwrap();
         let key_pair = KeyPair::from_secret_key(&sk, Cryptography::Secp256k1);
         let signature = key_pair.sign(&message);
         println!("{}", signature);
@@ -266,11 +252,9 @@ mod tests {
     }
 
     #[test]
-    fn sign_and_verify_sm2p256k1() {
-        let sk =
-            hex::decode("29d63245990076b0bbb33f7482beef21855a8d2197c8d076c2356c49e2a06322").unwrap();
-        let message =
-            hex::decode("790dcb1e43ac151998f8c2e59e0959072f9d476d19fb6f98d7a4e59ea5f8e59e").unwrap();
+    fn sign_and_verify_sm2p256v1() {
+        let sk = HexString::new("0x29d63245990076b0bbb33f7482beef21855a8d2197c8d076c2356c49e2a06322").decode();
+        let message = HexString::new("0x0102030405060708010203040506070801020304050607080102030405060708").decode();
 
         let key_pair = KeyPair::from_secret_key(&sk, Cryptography::Sm2p256v1);
         let signature = key_pair.sign(&message);

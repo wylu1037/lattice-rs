@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crypto::aes;
-use crypto::sign::{hash_message, KeyPair};
+use crypto::hash::hash_message;
+use crypto::sign::KeyPair;
 use model::Cryptography;
 use model::HexString;
 
