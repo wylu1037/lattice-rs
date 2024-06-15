@@ -30,12 +30,12 @@ impl Mnemonic {
         }
     }
 
-    fn to_entropy(&self) -> Vec<u8> {
+    pub fn to_entropy(&self) -> Vec<u8> {
         let mnemonic = Bip39Mnemonic::from_str(&self.words).expect(format!("recover mnemonic from words {} failed", &self.words).as_str());
         mnemonic.to_entropy()
     }
 
-    fn to_seed(&self, passphrase: &str) -> [u8; 64] {
+    pub fn to_seed(&self, passphrase: &str) -> [u8; 64] {
         let mnemonic = Bip39Mnemonic::from_str(&self.words).expect(format!("recover mnemonic from words {} failed", &self.words).as_str());
         mnemonic.to_seed(passphrase)
     }

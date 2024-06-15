@@ -19,9 +19,9 @@ pub struct KeyPair {
     pub cryptography: Cryptography,
 }
 
-static CONTEXT_SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
-static CONTEXT_SM2P256V1: Lazy<SigCtx> = Lazy::new(SigCtx::new);
-static CURVE_SM2P256V1: Lazy<EccCtx> = Lazy::new(EccCtx::new);
+pub static CONTEXT_SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
+pub static CONTEXT_SM2P256V1: Lazy<SigCtx> = Lazy::new(SigCtx::new);
+pub static CURVE_SM2P256V1: Lazy<EccCtx> = Lazy::new(EccCtx::new);
 
 impl KeyPair {
     pub fn new_keypair(cryptography: Cryptography) -> KeyPair {

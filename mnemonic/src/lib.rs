@@ -1,1 +1,1 @@
-mod bip39;
+pub mod bip39;

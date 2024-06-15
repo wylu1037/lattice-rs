@@ -40,7 +40,7 @@ pub struct Transaction {
     pub proof_of_work: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub enum TxType {
     Genesis,
     Create,
@@ -125,7 +125,7 @@ impl Transaction {
         rlp.append(&number_to_vec(self.height));
         rlp.append(&self.tx_type.to_vec());
         rlp.append(&parent_hash);
-        rlp.append_list(&hub_arr);
+        rlp.append_list::<Vec<u8>, Vec<u8>>(&hub_arr);
         rlp.append(&daemon_hash);
         rlp.append(&code_hash);
         rlp.append(&owner_address);
@@ -133,17 +133,17 @@ impl Transaction {
         rlp.append(&option_number_to_vec(self.amount));
         rlp.append(&option_number_to_vec(self.joule));
         if use_pow {
-            rlp.append(HexString::new(pow.as_str()).decode().as_slice());
+            rlp.append(&HexString::new(pow.as_str()).decode());
         } else {
-            rlp.append(DIFFICULTY_BYTE_ARRAY.as_slice());
-            rlp.append(POW_BYTE_ARRAY.as_slice());
+            rlp.append(&DIFFICULTY_BYTE_ARRAY);
+            rlp.append(&POW_BYTE_ARRAY);
         }
         rlp.append(&payload);
         rlp.append(&number_to_vec(self.timestamp));
         rlp.append(&number_to_vec(chain_id));
         if is_sign {
-            rlp.append(vec![].as_slice());
-            rlp.append(vec![].as_slice());
+            rlp.append(&vec![]);
+            rlp.append(&vec![]);
         }
 
         rlp.out().to_vec()
@@ -181,7 +181,7 @@ impl Transaction {
         let data = HexString::new(hash.as_str()).decode();
         let signature = key_pair.sign(&data);
         self.sign = signature;
-        
+
         (pow, self.sign.to_string())
     }
 }

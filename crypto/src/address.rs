@@ -1,8 +1,7 @@
 use sha256::digest;
 
 use model::Cryptography;
-
-use crate::sign::hash_message;
+use crate::hash::hash_message;
 
 /// # 公钥转地址
 /// ## 入参
