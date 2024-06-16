@@ -7,10 +7,18 @@
     <a href="wasm">wasm</a>
 </p>
 
-<h1>简介</h1>
+## 简介
+
 Rust语言版本的链SDK。
 
-<h1 id="WebAssembly ">WebAssembly</h1>
+## WebAssembly
+
 WASM
 
-<h1>计划</h1>
+## Docs
+
+```shell
+cargo doc --open
+```
+
+## 计划

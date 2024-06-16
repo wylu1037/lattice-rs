@@ -47,6 +47,14 @@ pub fn convert_arguments(types: Vec<Param>, args: Vec<Box<dyn Any>>) -> Result<V
     Ok(converted_args)
 }
 
+/// # 转换参数
+/// ## 入参
+/// + `ty: &str`: 参数的类型
+/// + `components: Vec<Param>`: Tuple类型参数的子类型
+/// + `arg: &Box<dyn Any>`: 实参
+///
+/// ## 出参
+/// + `Result<DynSolValue, Error>`
 pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) -> Result<DynSolValue, Error> {
     match ty {
         _ if STRING_TY == ty => {
@@ -115,7 +123,6 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
                 }
             };
         }
-        // 兼容数组和固定长度的数组
         _ if is_array(ty) => {
             let (child_ty, size) = parse_array(ty);
             let arg = arg.downcast_ref::<Vec<&str>>();
@@ -171,13 +178,22 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
     }
 }
 
+/// 匹配 solidity 的byte1-byte32类型
+const SOL_TY_BYTES_REGEX: &str = r"^(bytes)([1-9]*)$";
+/// 匹配 solidity 的uint1-uint256类型
+const SOL_TY_UINT_REGEX: &str = r"^(uint)([1-9]*)$";
+/// 匹配 solidity 的int1-int256类型
+const SOL_TY_INT_REGEX: &str = r"^(int)([1-9]*)$";
+/// 匹配 solidity 的 array 类型，Example: string[], bool[], bytes32[], uint256[]...
+const SOL_TY_ARRAY_REGEX: &str = r"^([a-z1-9]+)(\[([1-9]*)])$";
+
 fn is_bytes(ty: &str) -> bool {
-    let regex = Regex::new(r"^(bytes)([1-9]*)$").unwrap();
+    let regex = Regex::new(SOL_TY_BYTES_REGEX).unwrap();
     regex.is_match(ty)
 }
 
 fn parse_bytes(ty: &str) -> (String, usize) {
-    let regex = Regex::new(r"^(bytes)([1-9]*)$").unwrap();
+    let regex = Regex::new(SOL_TY_BYTES_REGEX).unwrap();
     let c = regex.captures(ty).unwrap();
     let ty = c.get(1).unwrap();
     let size = c.get(2).unwrap();
@@ -186,12 +202,12 @@ fn parse_bytes(ty: &str) -> (String, usize) {
 }
 
 fn is_uint(ty: &str) -> bool {
-    let regex = Regex::new(r"^(uint)([1-9]*)$").unwrap();
+    let regex = Regex::new(SOL_TY_UINT_REGEX).unwrap();
     regex.is_match(ty)
 }
 
 fn parse_uint(ty: &str) -> (String, usize) {
-    let regex = Regex::new(r"^(uint)([1-9]*)$").unwrap();
+    let regex = Regex::new(SOL_TY_UINT_REGEX).unwrap();
     let c = regex.captures(ty).unwrap();
     let ty = c.get(1).unwrap();
     let size = c.get(2).unwrap();
@@ -200,12 +216,12 @@ fn parse_uint(ty: &str) -> (String, usize) {
 }
 
 fn is_int(ty: &str) -> bool {
-    let regex = Regex::new(r"^(int)([1-9]*)$").unwrap();
+    let regex = Regex::new(SOL_TY_INT_REGEX).unwrap();
     regex.is_match(ty)
 }
 
 fn parse_int(ty: &str) -> (String, usize) {
-    let regex = Regex::new(r"^(int)([1-9]*)$").unwrap();
+    let regex = Regex::new(SOL_TY_INT_REGEX).unwrap();
     let c = regex.captures(ty).unwrap();
     let ty = c.get(1).unwrap();
     let size = c.get(2).unwrap();
@@ -214,12 +230,12 @@ fn parse_int(ty: &str) -> (String, usize) {
 }
 
 fn is_array(ty: &str) -> bool {
-    let regex = Regex::new(r"^([a-z1-9]+)(\[([1-9]*)])$").unwrap();
+    let regex = Regex::new(SOL_TY_ARRAY_REGEX).unwrap();
     regex.is_match(ty)
 }
 
 fn parse_array(ty: &str) -> (String, usize) {
-    let regex = Regex::new(r"^([a-z1-9]+)(\[([1-9]*)])$").unwrap();
+    let regex = Regex::new(SOL_TY_ARRAY_REGEX).unwrap();
     let c = regex.captures(ty).unwrap();
     let ty = c.get(1).unwrap();
     let size = c.get(3).unwrap();
@@ -236,6 +252,8 @@ mod tests {
     use alloy_primitives::{b256, U256};
     use alloy_primitives::hex;
     use regex::Regex;
+
+    use model::HexString;
 
     use crate::encode::convert_arguments;
 
@@ -459,6 +477,21 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_ledger_add_protocol() {
+        let abi: JsonAbi = serde_json::from_str(LEDGER_ABI).unwrap();
+        let f = abi.functions.get("addProtocol").unwrap().get(0).unwrap();
+        let data = "ef7e9858000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001516482b2880721149f75c9aea3b6a6a700022c78561f6e22fbd0d4f73e5e7432";
+        let result = f.abi_decode_input(&HexString::new(&data[8..]).decode(), false).unwrap();
+        let (num, _) = result[0].as_uint().unwrap();
+        println!("{}", num);
+        let arr = result[1].as_array().unwrap();
+        for e in arr {
+            let (bytes, _) = e.as_fixed_bytes().unwrap();
+            println!("{}", hex::encode(bytes));
+        }
+    }
+
+    #[test]
     fn test_encode() {
         // parse a type from a string
         // note: eip712 `CustomStruct`s cannot be parsed this way.
@@ -493,8 +526,8 @@ mod tests {
 
     #[test]
     fn test_encode_tuple_arguments() {
-        let abi: JsonAbi = serde_json::from_str("[{\"inputs\":[],\"name\":\"getUser\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isMan\",\"type\":\"bool\"},{\"internalType\":\"string[]\",\"name\":\"tags\",\"type\":\"string[]\"},{\"internalType\":\"uint32[]\",\"name\":\"levels\",\"type\":\"uint32[]\"}],\"internalType\":\"struct Test.User\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isMan\",\"type\":\"bool\"},{\"internalType\":\"string[]\",\"name\":\"tags\",\"type\":\"string[]\"},{\"internalType\":\"uint32[]\",\"name\":\"levels\",\"type\":\"uint32[]\"}],\"internalType\":\"struct Test.User\",\"name\":\"newUser\",\"type\":\"tuple\"}],\"name\":\"setUser\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32[]\",\"name\":\"newLevels\",\"type\":\"uint32[]\"}],\"name\":\"updateLevels\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"newName\",\"type\":\"string\"}],\"name\":\"updateName\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string[]\",\"name\":\"newTags\",\"type\":\"string[]\"}],\"name\":\"updateTags\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]").unwrap();
-        let f = abi.functions.get("setUser").unwrap().get(0).unwrap();
+        let abi: JsonAbi = serde_json::from_str(r#"[{"inputs":[],"name":"getUser","outputs":[{"components":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"isMan","type":"bool"},{"internalType":"string[]","name":"tags","type":"string[]"},{"internalType":"uint32[]","name":"levels","type":"uint32[]"}],"internalType":"struct Test.User","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"isMan","type":"bool"},{"internalType":"string[]","name":"tags","type":"string[]"},{"internalType":"uint32[]","name":"levels","type":"uint32[]"}],"internalType":"struct Test.User","name":"newUser","type":"tuple"}],"name":"setUser","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32[]","name":"newLevels","type":"uint32[]"}],"name":"updateLevels","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"newName","type":"string"}],"name":"updateName","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string[]","name":"newTags","type":"string[]"}],"name":"updateTags","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#).unwrap();
+        let func = abi.functions.get("setUser").unwrap().get(0).unwrap();
         let args: Vec<Box<dyn Any>> = vec![
             Box::new("100"),
             Box::new("Jack"),
@@ -503,10 +536,28 @@ mod tests {
             Box::new(vec!["1", "2", "3"]),
         ];
         let args: Vec<Box<dyn Any>> = vec![Box::new(args)];
-        let args = convert_arguments(f.inputs.clone(), args).unwrap();
-        let data = f.abi_encode_input(args.as_slice()).unwrap();
+        let args = convert_arguments(func.inputs.clone(), args).unwrap();
+        let data = func.abi_encode_input(args.as_slice()).unwrap();
         let excepted_data = "66e334840000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001c000000000000000000000000000000000000000000000000000000000000000044a61636b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000036d616e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004676f6f64000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003";
         assert_eq!(excepted_data, hex::encode(data));
+    }
+
+    #[test]
+    fn test_decode_tuple_arguments() {
+        let abi: JsonAbi = serde_json::from_str(r#"[{"inputs":[],"name":"getUser","outputs":[{"components":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"isMan","type":"bool"},{"internalType":"string[]","name":"tags","type":"string[]"},{"internalType":"uint32[]","name":"levels","type":"uint32[]"}],"internalType":"struct Test.User","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"isMan","type":"bool"},{"internalType":"string[]","name":"tags","type":"string[]"},{"internalType":"uint32[]","name":"levels","type":"uint32[]"}],"internalType":"struct Test.User","name":"newUser","type":"tuple"}],"name":"setUser","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32[]","name":"newLevels","type":"uint32[]"}],"name":"updateLevels","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"newName","type":"string"}],"name":"updateName","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string[]","name":"newTags","type":"string[]"}],"name":"updateTags","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#).unwrap();
+        let func = abi.functions.get("setUser").unwrap().get(0).unwrap();
+        let data = "66e334840000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001c000000000000000000000000000000000000000000000000000000000000000044a61636b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000036d616e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004676f6f64000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003";
+
+        let result = func.abi_decode_input(&HexString::new(&data[8..]).decode(), false).unwrap();
+        println!("{:?}", result);
+        let tuple = result[0].as_tuple().unwrap();
+
+        let (num, _) = tuple[0].as_uint().unwrap();
+        println!("{}", num);
+        let str = tuple[1].as_str().unwrap();
+        println!("{}", str);
+        let b = tuple[2].as_bool().unwrap();
+        println!("{}", b);
     }
 
     #[test]
