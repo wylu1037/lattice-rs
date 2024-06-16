@@ -41,9 +41,13 @@ impl fmt::Debug for Protected {
     }
 }
 
+
+/// # 扩展私钥，包括私钥[0..32]、链码[32..64]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ExtendedPrivateKey {
+    /// 私钥，32 byte
     secret_key: BigUint,
+    /// 链码，32 byte
     chain_code: Protected,
 }
 
@@ -74,6 +78,11 @@ impl ExtendedPrivateKey {
         Ok(sk)
     }
 
+    /// # padding zero in the top of sk when sk len less than 32
+    /// ## 入参
+    ///
+    /// ## 出参
+    /// + `[u8; 32]`: secret key byte array
     pub fn secret(&self) -> [u8; 32] {
         let bytes = self.secret_key.to_bytes_be();
 
@@ -102,13 +111,7 @@ impl ExtendedPrivateKey {
             }
         } else {
             hmac.update(&[0]);
-            let mut sk_bytes = &mut self.secret_key.to_bytes_be();
-            // padding zero in the top of byte arr
-            if sk_bytes.len() < 32 {
-                for i in 0..32 - sk_bytes.len() {
-                    sk_bytes.insert(i, 0);
-                }
-            }
+            let sk_bytes = &self.secret();
             hmac.update(&sk_bytes[..32]);
         }
 

@@ -98,7 +98,7 @@ impl HttpClient {
     /// ## Parameters
     ///
     /// ## Returns
-    /// + DBlock
+    /// + `Box<DBlock>`
     pub async fn get_current_daemon_block(&self) -> Box<DBlock> {
         let body = JsonRpcBody::new("latc_getCurrentDBlock".to_string(), vec![]);
         let message = serde_json::to_string(&body).unwrap();
@@ -115,7 +115,7 @@ impl HttpClient {
     /// + `hash: &str`: 交易哈希，示例：`0xe8df1f1e250cd0eac75eee3f8733e26e9422ef5ea88650ab54498cd8e4928144`
     ///
     /// ## Returns
-    /// + Box<Receipt>
+    /// + `Box<Receipt>`
     pub async fn get_receipt(&self, hash: &str) -> Result<Box<Receipt>, Box<dyn Error>> {
         let body = JsonRpcBody::new("latc_getReceipt".to_string(), vec![json!(hash)]);
         let message = serde_json::to_string(&body).unwrap();

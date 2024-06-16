@@ -189,5 +189,5 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_serialize() {}
+    fn test_sign_tx() {}
 }
