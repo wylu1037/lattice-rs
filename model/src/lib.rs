@@ -1,5 +1,6 @@
 pub use common::HexString;
 pub use enums::Cryptography;
+pub use errors::Error;
 pub use errors::LatticeError;
 
 pub mod block;

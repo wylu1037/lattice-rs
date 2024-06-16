@@ -1,3 +1,6 @@
+use std::fmt;
+use std::fmt::Formatter;
+
 use thiserror::Error;
 
 /// 定义一个宏来简化自定义错误类型的创建
@@ -43,3 +46,32 @@ create_error!(LatticeError,
     ReceiptNotFound => ("Receipt not found, contract is not execute or tx is not on-chain", "收据信息不存在，合约未被执行或者交易未被上链")
 );
 
+#[derive(Debug)]
+pub struct Error {
+    code: i32,
+    message: String,
+}
+
+impl Error {
+    pub fn new(message: String) -> Self {
+        Error {
+            code: -1,
+            message,
+        }
+    }
+
+    pub fn custom(code: i32, message: String) -> Self {
+        Error {
+            code,
+            message,
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "err code:{}, err message: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for Error {}
