@@ -13,7 +13,7 @@ Rust语言版本的链SDK。
 
 ## WebAssembly
 
-WASM
+[WASM](https://rustwasm.github.io/wasm-pack/book/)
 
 ## Docs
 

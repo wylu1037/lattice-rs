@@ -2,6 +2,7 @@ use sha256::digest;
 
 use crate::constants::ADDRESS_TITLE;
 
+/// hex字符串结构体
 pub struct HexString {
     pub hex_string: String,
 }
@@ -9,8 +10,15 @@ pub struct HexString {
 const HEX_PREFIX: &str = "0x";
 
 impl HexString {
+    /// # 接收一个hex字符串来初始化一个hex对象
     pub fn new(hex: &str) -> Self {
         HexString { hex_string: hex.to_string() }
+    }
+
+    /// # 接收一个`&[u8]`字符串来初始化一个hex对象
+    pub fn from(bs: &[u8]) -> Self {
+        let hex_string = hex::encode(bs);
+        HexString { hex_string: format!("{}{}", HEX_PREFIX, hex_string) }
     }
 
     /// # 获取没有前缀0x的hex string
@@ -28,16 +36,30 @@ impl HexString {
     }
 }
 
+/// 地址结构体
 pub struct Address {
     pub addr: String,
 }
 
 impl Address {
+    /// # 初始化一个地址对象
+    /// ## 入参
+    /// + `addr: &str`: 可接收一个zltc地址或ethereum地址
+    ///   + `zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi`
+    ///   + `0x5f2be9a02b43f748ee460bf36eed24fafa109920`
+    ///
+    /// ## 出参
+    /// + `Address`
     pub fn new(addr: &str) -> Self {
         Address { addr: addr.to_string() }
     }
 
-
+    /// # Lattice地址转为以太坊地址
+    /// ## 入参
+    /// + `&self`: Lattice地址，示例：`zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi`
+    ///
+    /// ## 出参
+    /// + `String`: 示例：`0x5f2be9a02b43f748ee460bf36eed24fafa109920`
     pub fn to_ethereum_address(&self) -> String {
         if self.addr.starts_with(ADDRESS_TITLE) {
             let addr = &self.addr[5..];
@@ -52,6 +74,12 @@ impl Address {
         }
     }
 
+    /// # 以太坊地址转为Lattice地址
+    /// ## 入参
+    /// + `&self`: 以太坊地址，示例：`0x5f2be9a02b43f748ee460bf36eed24fafa109920`
+    ///
+    /// ## 出参
+    /// + `String`: Lattice地址，示例：`zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi`
     pub fn to_zltc_address(&self) -> String {
         if self.addr.starts_with(HEX_PREFIX) {
             let eth = HexString::new(&self.addr).decode();
@@ -73,9 +101,18 @@ mod tests {
     use crate::common::{Address, HexString};
 
     #[test]
-    fn test_hex_string() {
-        let str = HexString::new("0x0102030405").clean_hex_string();
-        println!("{}", str);
+    fn test_new_hex_string() {
+        let bs = HexString::new("0x5f2be9a02b43f748ee460bf36eed24fafa109920").decode();
+        let excepted: [u8; 20] = [95, 43, 233, 160, 43, 67, 247, 72, 238, 70, 11, 243, 110, 237, 36, 250, 250, 16, 153, 32];
+        assert_eq!(excepted, bs.as_slice())
+    }
+
+    #[test]
+    fn test_new_text_string_from_bytes() {
+        let bs: [u8; 20] = [95, 43, 233, 160, 43, 67, 247, 72, 238, 70, 11, 243, 110, 237, 36, 250, 250, 16, 153, 32];
+        let hex_string = HexString::from(bs.as_slice()).hex_string;
+        let expected = "0x5f2be9a02b43f748ee460bf36eed24fafa109920";
+        assert_eq!(expected, hex_string)
     }
 
     #[test]
