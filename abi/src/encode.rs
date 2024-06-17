@@ -60,7 +60,7 @@ pub fn convert_arguments(types: Vec<Param>, args: Vec<Box<dyn Any>>) -> Result<V
 /// + `Result<DynSolValue, Error>`
 pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) -> Result<DynSolValue, Error> {
     match ty {
-        _ if STRING_TY == ty => {
+        STRING_TY => {
             let arg = arg.downcast_ref::<&str>();
             return match arg {
                 None => Err(Error::new(format!("invalid arg type, {} expected input string value", ty))),
@@ -69,7 +69,7 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
                 }
             };
         }
-        _ if BOOL_TY == ty => {
+        BOOL_TY => {
             let arg = arg.downcast_ref::<&str>();
             return match arg {
                 None => Err(Error::new(format!("invalid arg type, {} expected input string value", ty))),
@@ -80,7 +80,7 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
                 }
             };
         }
-        _ if ADDRESS_TY == ty => {
+        ADDRESS_TY => {
             let arg = arg.downcast_ref::<&str>();
             return match arg {
                 None => Err(Error::new(format!("invalid arg type, {} expected input string value", ty))),
@@ -90,7 +90,7 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
                 }
             };
         }
-        _ if TUPLE_TY == ty => {
+        TUPLE_TY => {
             let arg = arg.downcast_ref::<Vec<Box<dyn Any>>>();
             return match arg {
                 None => Err(Error::new(format!("unsupported arg type, {}", ty))),
@@ -260,218 +260,14 @@ mod tests {
 
     use crate::encode::convert_arguments;
 
-    const LEDGER_ABI: &str = r#"[
-      {
-        "inputs": [
-          {
-            "internalType": "uint64",
-            "name": "protocolSuite",
-            "type": "uint64"
-          },
-          {
-            "internalType": "bytes32[]",
-            "name": "data",
-            "type": "bytes32[]"
-          }
-        ],
-        "name": "addProtocol",
-        "outputs": [
-          {
-            "internalType": "uint64",
-            "name": "protocolUri",
-            "type": "uint64"
-          }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint64",
-            "name": "protocolUri",
-            "type": "uint64"
-          }
-        ],
-        "name": "getAddress",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "updater",
-                "type": "address"
-              },
-              {
-                "internalType": "bytes32[]",
-                "name": "data",
-                "type": "bytes32[]"
-              }
-            ],
-            "internalType": "struct credibilidity.Protocol[]",
-            "name": "protocol",
-            "type": "tuple[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint64",
-            "name": "protocolUri",
-            "type": "uint64"
-          },
-          {
-            "internalType": "bytes32[]",
-            "name": "data",
-            "type": "bytes32[]"
-          }
-        ],
-        "name": "updateProtocol",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "hash",
-            "type": "string"
-          },
-          {
-            "internalType": "address",
-            "name": "address",
-            "type": "address"
-          }
-        ],
-        "name": "getTraceability",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "uint64",
-                "name": "number",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "protocol",
-                "type": "uint64"
-              },
-              {
-                "internalType": "address",
-                "name": "updater",
-                "type": "address"
-              },
-              {
-                "internalType": "bytes32[]",
-                "name": "data",
-                "type": "bytes32[]"
-              }
-            ],
-            "internalType": "struct credibilidity.Evidence[]",
-            "name": "evi",
-            "type": "tuple[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "hash",
-            "type": "string"
-          },
-          {
-            "internalType": "address",
-            "name": "address",
-            "type": "address"
-          }
-        ],
-        "name": "setDataSecret",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint64",
-            "name": "protocolUri",
-            "type": "uint64"
-          },
-          {
-            "internalType": "string",
-            "name": "hash",
-            "type": "string"
-          },
-          {
-            "internalType": "bytes32[]",
-            "name": "data",
-            "type": "bytes32[]"
-          },
-          {
-            "internalType": "address",
-            "name": "address",
-            "type": "address"
-          }
-        ],
-        "name": "writeTraceability",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "components": [
-              {
-                "internalType": "uint64",
-                "name": "protocolUri",
-                "type": "uint64"
-              },
-              {
-                "internalType": "string",
-                "name": "hash",
-                "type": "string"
-              },
-              {
-                "internalType": "bytes32[]",
-                "name": "data",
-                "type": "bytes32[]"
-              },
-              {
-                "internalType": "address",
-                "name": "address",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct Business.batch[]",
-            "name": "bt",
-            "type": "tuple[]"
-          }
-        ],
-        "name": "writeTraceabilityBatch",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
-    ]"#;
+    const LEDGER_ABI: &str = r#"[{"inputs":[{"internalType":"uint64","name":"protocolSuite","type":"uint64"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"name":"addProtocol","outputs":[{"internalType":"uint64","name":"protocolUri","type":"uint64"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint64","name":"protocolUri","type":"uint64"}],"name":"getAddress","outputs":[{"components":[{"internalType":"address","name":"updater","type":"address"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"internalType":"struct credibilidity.Protocol[]","name":"protocol","type":"tuple[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint64","name":"protocolUri","type":"uint64"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"name":"updateProtocol","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"hash","type":"string"},{"internalType":"address","name":"address","type":"address"}],"name":"getTraceability","outputs":[{"components":[{"internalType":"uint64","name":"number","type":"uint64"},{"internalType":"uint64","name":"protocol","type":"uint64"},{"internalType":"address","name":"updater","type":"address"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"internalType":"struct credibilidity.Evidence[]","name":"evi","type":"tuple[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"hash","type":"string"},{"internalType":"address","name":"address","type":"address"}],"name":"setDataSecret","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint64","name":"protocolUri","type":"uint64"},{"internalType":"string","name":"hash","type":"string"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"},{"internalType":"address","name":"address","type":"address"}],"name":"writeTraceability","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"uint64","name":"protocolUri","type":"uint64"},{"internalType":"string","name":"hash","type":"string"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"},{"internalType":"address","name":"address","type":"address"}],"internalType":"struct Business.batch[]","name":"bt","type":"tuple[]"}],"name":"writeTraceabilityBatch","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
 
     #[test]
     fn test_encode_ledger_add_protocol() {
         let abi: JsonAbi = serde_json::from_str(LEDGER_ABI).unwrap();
         let f = abi.functions.get("addProtocol").unwrap().get(0).unwrap();
-        //let b = hex::decode("516482b2880721149f75c9aea3b6a6a700022c78561f6e22fbd0d4f73e5e7432").unwrap();
-        //let w = B256::from_slice(b.as_slice());
         let input = [
             DynSolValue::Uint(U256::from(100u64), 64),
-            //DynSolValue::Array(vec![DynSolValue::FixedBytes(w, 32)])
             DynSolValue::Array(vec![DynSolValue::FixedBytes(b256!("516482b2880721149f75c9aea3b6a6a700022c78561f6e22fbd0d4f73e5e7432"), 32)])
         ];
         let result = f.abi_encode_input(&input).unwrap();
