@@ -1308,6 +1308,7 @@ dependencies = [
  "bs58",
  "hex",
  "num-bigint",
+ "reqwest",
  "serde",
  "serde_json",
  "sha256",

@@ -1,10 +1,17 @@
 use serde::{Deserialize, Serialize};
 
 /// 最新的账户区块和守护区块信息
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CurrentTDBlock {
+    /// 最新的守护区块
+    #[serde(rename = "currentDBlockHash")]
     current_dblock_hash: String,
+    /// 最新的账户区块
+    #[serde(rename = "currentTBlockHash")]
     current_tblock_hash: String,
-    current_tblock_number: u64,
+    /// 最新的账户区块高度
+    #[serde(rename = "currentTBlockNumber")]
+    current_tblock_height: u64,
 }
 
 /// 账户区块

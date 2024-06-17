@@ -53,10 +53,10 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: String) -> Self {
+    pub fn new(message: &str) -> Self {
         Error {
             code: -1,
-            message,
+            message: message.to_string(),
         }
     }
 
@@ -70,8 +70,20 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "err code:{}, err message: {}", self.code, self.message)
+        write!(f, "Err code: {}, Err message: {}", self.code, self.message)
     }
 }
 
 impl std::error::Error for Error {}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Error::new(err.to_string().as_str())
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Self {
+        Error::new(err.to_string().as_str())
+    }
+}

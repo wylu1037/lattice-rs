@@ -22,7 +22,7 @@ impl<'a> Abi<'a> {
         let abi = self.parse();
         let functions = abi.functions;
         if !functions.contains_key(&function_name) {
-            return Err(Error::new(format!("function {} not found in abi", function_name)));
+            return Err(Error::new(&format!("function {} not found in abi", function_name)));
         }
         let function = functions.get(&function_name).unwrap().get(0).unwrap().clone();
         Ok(function)

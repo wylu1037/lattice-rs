@@ -34,7 +34,7 @@ const TUPLE_TY: &str = "tuple";
 ///   + `Err`: error
 pub fn convert_arguments(types: Vec<Param>, args: Vec<Box<dyn Any>>) -> Result<Vec<DynSolValue>, Error> {
     if types.len() != args.len() {
-        return Err(Error::new(format!("inputs len {} not equals args len {}", types.len(), args.len())));
+        return Err(Error::new(&format!("inputs len {} not equals args len {}", types.len(), args.len())));
     }
 
     let mut converted_args: Vec<DynSolValue> = Vec::new();
@@ -63,7 +63,7 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         STRING_TY => {
             let arg = arg.downcast_ref::<&str>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input string value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
                 Some(v) => {
                     Ok(DynSolValue::String((*v).to_string()))
                 }
@@ -72,7 +72,7 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         BOOL_TY => {
             let arg = arg.downcast_ref::<&str>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input string value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
                 Some(v) => {
                     let v = *v;
                     let b: bool = v.to_lowercase().parse().unwrap();
@@ -83,7 +83,7 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         ADDRESS_TY => {
             let arg = arg.downcast_ref::<&str>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input string value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
                 Some(v) => {
                     let addr = Address::new(*v);
                     Ok(DynSolValue::Address(SolAddress::parse_checksummed(addr.to_ethereum_address(), None).expect("invalid address checksum")))
@@ -93,10 +93,10 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         TUPLE_TY => {
             let arg = arg.downcast_ref::<Vec<Box<dyn Any>>>();
             return match arg {
-                None => Err(Error::new(format!("unsupported arg type, {}", ty))),
+                None => Err(Error::new(&format!("unsupported arg type, {}", ty))),
                 Some(v) => {
                     if v.len() != components.len() {
-                        return Err(Error::new(format!("{} expected field count is {}, but actual field count is {}", ty, components.len(), v.len())));
+                        return Err(Error::new(&format!("{} expected field count is {}, but actual field count is {}", ty, components.len(), v.len())));
                     }
                     let mut converted_arg_vec: Vec<DynSolValue> = Vec::new();
                     for (i, elem) in v.iter().enumerate() {
@@ -112,11 +112,11 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
             let (_, size) = parse_bytes(ty);
             let arg = arg.downcast_ref::<&str>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input &str value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
                 Some(v) => {
                     let bytes = HexString::new(v).decode();
                     if size > 0 && bytes.len() != size {
-                        return Err(Error::new(format!("{} expected length is {}, but actual length is {}", ty, size, bytes.len())));
+                        return Err(Error::new(&format!("{} expected length is {}, but actual length is {}", ty, size, bytes.len())));
                     }
                     if size > 0 {
                         Ok(DynSolValue::FixedBytes(B256::from_slice(bytes.as_slice()), size))
@@ -130,10 +130,10 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
             let (child_ty, size) = parse_array(ty);
             let arg = arg.downcast_ref::<Vec<&str>>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input Vec<&str> value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input Vec<&str> value", ty))),
                 Some(v) => {
                     if size > 0 && v.len() != size {
-                        return Err(Error::new(format!("{} expected length is {}, but actual length is {}", ty, size, v.len())));
+                        return Err(Error::new(&format!("{} expected length is {}, but actual length is {}", ty, size, v.len())));
                     }
                     let mut converted_arg_vec: Vec<DynSolValue> = Vec::new();
                     for elem in v {
@@ -152,11 +152,11 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         _ if is_uint(ty) => {
             let (_, size) = parse_uint(ty);
             if size == 0 {
-                return Err(Error::new(format!("unsupported arg type, {}", ty)));
+                return Err(Error::new(&format!("unsupported arg type, {}", ty)));
             }
             let arg = arg.downcast_ref::<&str>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input &str value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
                 Some(v) => {
                     let num = U256::from_str(*v).unwrap();
                     Ok(DynSolValue::Uint(num, size))
@@ -166,18 +166,18 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         _ if is_int(ty) => {
             let (_, size) = parse_int(ty);
             if size == 0 {
-                return Err(Error::new(format!("unsupported arg type, {}", ty)));
+                return Err(Error::new(&format!("unsupported arg type, {}", ty)));
             }
             let arg = arg.downcast_ref::<&str>();
             return match arg {
-                None => Err(Error::new(format!("invalid arg type, {} expected input &str value", ty))),
+                None => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
                 Some(v) => {
                     let num = I256::from_str(*v).unwrap();
                     Ok(DynSolValue::Int(num, size))
                 }
             };
         }
-        _ => Err(Error::new(format!("unsupported arg type, {}", ty)))
+        _ => Err(Error::new(&format!("unsupported arg type, {}", ty)))
     }
 }
 

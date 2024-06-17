@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::fmt::Debug;
 
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
@@ -13,8 +13,9 @@ use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
 
-use model::block::DBlock;
-use model::LatticeError;
+use model::block::{CurrentTDBlock, DBlock};
+use model::common::Address;
+use model::Error;
 use model::receipt::Receipt;
 
 use crate::constants::JSON_RPC;
@@ -22,7 +23,7 @@ use crate::constants::JSON_RPC;
 /// 定义一个异步的客户端trait
 #[async_trait]
 pub trait HttpRequest {
-    async fn send(&self, message: &str) -> Result<String, Box<dyn Error>>;
+    async fn send(&self, message: &str) -> Result<String, Error>;
 }
 
 /// Json-Rpc请求体
@@ -94,46 +95,67 @@ impl HttpClient {
         }
     }
 
+    async fn send_json_rpc_request<T>(&self, body: &JsonRpcBody) -> Result<T, Error>
+        where
+            T: for<'a> Deserialize<'a>
+    {
+        let message = serde_json::to_string(&body)?;
+        let response = self.send(message.as_str()).await?;
+        let response: Response<T> = serde_json::from_str(&response)?;
+        let err_option = response.error;
+        if let Some(err) = err_option {
+            return Err(Error::custom(err.code as i32, format!("{}", err.message)));
+        }
+        response.result.ok_or(Error::new("结果为空"))
+    }
+
     /// # 查询最新的守护区块信息
+    ///
     /// ## Parameters
     ///
     /// ## Returns
     /// + `Box<DBlock>`
-    pub async fn get_current_daemon_block(&self) -> Box<DBlock> {
+    pub async fn get_current_daemon_block(&self) -> Result<DBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentDBlock".to_string(), vec![]);
-        let message = serde_json::to_string(&body).unwrap();
-        let response = self.send(message.as_str()).await.unwrap();
-        let response: Response<DBlock> = serde_json::from_str(&response).unwrap();
-        Box::new(response.result.unwrap())
+        let result: Result<DBlock, Error> = self.send_json_rpc_request(&body).await;
+        result
+    }
+
+    /// # 查询最新的区块（包括账户和守护区块的信息）
+    ///
+    /// ## 入参
+    /// + `addr: &Address`
+    ///
+    /// ## 出参
+    /// + `Result<CurrentTDBlock, Error>`
+    ///   + `Ok(CurrentTDBlock)`
+    ///   + `Err(err)`
+    pub async fn get_current_tx_daemon_block(&self, addr: &Address) -> Result<CurrentTDBlock, Error> {
+        let body = JsonRpcBody::new("latc_getCurrentTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
+        let result: Result<CurrentTDBlock, Error> = self.send_json_rpc_request(&body).await;
+        result
     }
 
     /// # 发送已签名的交易
     pub async fn send_raw_tx() {}
 
     /// # 查询交易回执
+    ///
     /// ## Parameters
     /// + `hash: &str`: 交易哈希，示例：`0xe8df1f1e250cd0eac75eee3f8733e26e9422ef5ea88650ab54498cd8e4928144`
     ///
     /// ## Returns
     /// + `Box<Receipt>`
-    pub async fn get_receipt(&self, hash: &str) -> Result<Box<Receipt>, Box<dyn Error>> {
+    pub async fn get_receipt(&self, hash: &str) -> Result<Receipt, Error> {
         let body = JsonRpcBody::new("latc_getReceipt".to_string(), vec![json!(hash)]);
-        let message = serde_json::to_string(&body).unwrap();
-        let response = self.send(message.as_str()).await.unwrap();
-        let response: Response<Receipt> = serde_json::from_str(&response)?;
-        match response.result {
-            Some(receipt) => Ok(Box::new(receipt)),
-            None => match response.error {
-                Some(err) => Err(Box::new(LatticeError::ReceiptNotFound)),
-                None => Err(Box::new(LatticeError::InternalError))
-            }
-        }
+        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body).await;
+        result
     }
 }
 
 #[async_trait]
 impl HttpRequest for HttpClient {
-    async fn send(&self, message: &str) -> Result<String, Box<dyn Error>> {
+    async fn send(&self, message: &str) -> Result<String, Error> {
         let res = self.client.post(&self.url)
             .body(message.to_string())
             .header(CONTENT_TYPE, "application/json")
@@ -254,13 +276,18 @@ mod tests {
 
     use tokio::sync::mpsc;
 
+    use model::common::Address;
+
     use crate::client::{HttpClient, JsonRpcBody, WsClient, WsRequest};
 
     #[tokio::test]
     async fn test_get_current_daemon_block() {
         let client = HttpClient::new("192.168.1.185", 13000);
         let response = client.get_current_daemon_block().await;
-        println!("{:?}", response);
+        match response {
+            Ok(block) => println!("{:?}", block),
+            Err(err) => println!("{:?}", err)
+        }
     }
 
     #[tokio::test]
@@ -270,6 +297,16 @@ mod tests {
         match response {
             Ok(receipt) => println!("{:?}", receipt),
             Err(err) => println!("{:?}", err.to_string())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_current_tx_daemon_block() {
+        let client = HttpClient::new("192.168.1.185", 13000);
+        let response = client.get_current_tx_daemon_block(&Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J")).await;
+        match response {
+            Ok(block) => println!("{:?}", block),
+            Err(err) => println!("{:?}", err)
         }
     }
 
