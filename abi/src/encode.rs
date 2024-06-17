@@ -25,10 +25,13 @@ const TUPLE_TY: &str = "tuple";
 
 /// # 转换参数为Rust abi中对应的类型数据
 /// ## 入参
-/// + `types: Vec<Param>`
-/// + `args: Vec<Box<dyn Any>>`
+/// + `types: Vec<Param>`: abi中方法入参(行参)描述
+/// + `args: Vec<Box<dyn Any>>`: 真实的实参
 ///
 /// ## 出参
+/// + `Result<Vec<DynSolValue>, Error>`
+///   + `Ok`: Vec<DynSolValue>
+///   + `Err`: error
 pub fn convert_arguments(types: Vec<Param>, args: Vec<Box<dyn Any>>) -> Result<Vec<DynSolValue>, Error> {
     if types.len() != args.len() {
         return Err(Error::new(format!("inputs len {} not equals args len {}", types.len(), args.len())));

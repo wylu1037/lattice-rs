@@ -89,6 +89,16 @@ const POW_BYTE_ARRAY: Vec<u8> = vec![];
 const DIFFICULTY: usize = 12;
 
 impl Transaction {
+    /// # RLP编码
+    /// ## 入参
+    /// + `chain_id: u64`: 区块链id
+    /// + `pow: String`
+    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    /// + `use_pow: bool`
+    /// + `is_sign: bool`
+    ///
+    /// ## 出参
+    /// + `Vec<u8>`
     fn rlp_encode(&self, chain_id: u64, pow: String, cryptography: Cryptography, use_pow: bool, is_sign: bool) -> Vec<u8> {
         let mut rlp = RlpStream::new();
         rlp.begin_list(15 + if is_sign { 2 } else { 0 });
@@ -149,6 +159,13 @@ impl Transaction {
         rlp.out().to_vec()
     }
 
+    /// # 计算pow
+    /// ## 入参
+    /// + `chain_id: u64`: 区块链id
+    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    ///
+    /// ## 出参
+    /// + `BigUint`: pow
     fn pow(&self, chain_id: u64, cryptography: Cryptography) -> BigUint {
         let mut i: u32 = 0;
         let min: BigUint = BigUint::from(1u32).shl(256 - DIFFICULTY);
@@ -166,6 +183,14 @@ impl Transaction {
         }
     }
 
+    /// # encode
+    /// ## 入参
+    /// + `chain_id: u64`: 区块链id
+    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    ///
+    /// ## 出参
+    /// + `BigUint`
+    /// + `Vec<u8>`
     fn encode(&self, chain_id: u64, cryptography: Cryptography) -> (BigUint, Vec<u8>) {
         // let pow = self.pow(chain_id, cryptography);
         let pow = BigUint::from_bytes_be(HexString::new("0x00").decode().as_slice());
@@ -173,6 +198,15 @@ impl Transaction {
         (pow, code)
     }
 
+    /// # 签名交易
+    /// ## 入参
+    /// + `chain_id: u64`: 区块链id
+    /// + `sk: &[u8]`: 私钥
+    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    ///
+    /// ## 出参
+    /// + `BigUint`: pow
+    /// + `String`: signature
     fn sign(&mut self, chain_id: u64, sk: &[u8], cryptography: Cryptography) -> (BigUint, String) {
         let key_pair = KeyPair::from_secret_key(sk, cryptography);
 
