@@ -1,11 +1,13 @@
 pub use address::public_key_to_address;
+pub use transaction::Transaction;
 
 pub mod sign;
 pub mod model;
 
 pub mod address;
 pub mod aes;
-mod transaction;
+pub mod transaction;
+
 pub mod hash;
 
 #[cfg(test)]

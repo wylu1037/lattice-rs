@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 pub struct CurrentTDBlock {
     /// 最新的守护区块
     #[serde(rename = "currentDBlockHash")]
-    current_dblock_hash: String,
+    pub current_dblock_hash: String,
     /// 最新的账户区块
     #[serde(rename = "currentTBlockHash")]
-    current_tblock_hash: String,
+    pub current_tblock_hash: String,
     /// 最新的账户区块高度
     #[serde(rename = "currentTBlockNumber")]
-    current_tblock_height: u64,
+    pub current_tblock_height: u64,
 }
 
 /// 账户区块

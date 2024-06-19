@@ -38,6 +38,7 @@ pub struct Transaction {
     pub joule: Option<u128>,
     pub sign: String,
     pub proof_of_work: String,
+    pub version: u16,
 }
 
 #[derive(Deserialize, Debug)]
@@ -62,6 +63,19 @@ impl TxType {
             TxType::Execute => vec![0x05],
             TxType::Update => vec![0x06],
             _ => vec![0x00],
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match &self {
+            TxType::Genesis => "genesis".to_string(),
+            TxType::Create => "create".to_string(),
+            TxType::Send => "send".to_string(),
+            TxType::Receive => "receive".to_string(),
+            TxType::Contract => "contract".to_string(),
+            TxType::Execute => "execute".to_string(),
+            TxType::Update => "update".to_string(),
+            _ => "".to_string(),
         }
     }
 }
@@ -89,6 +103,32 @@ const POW_BYTE_ARRAY: Vec<u8> = vec![];
 const DIFFICULTY: usize = 12;
 
 impl Transaction {
+    /// # 创建空交易
+    ///
+    /// ## 入参
+    ///
+    /// ## 出参
+    /// + `Transaction`
+    pub fn empty_tx() -> Self {
+        Transaction {
+            height: 0,
+            parent_hash: String::new(),
+            daemon_hash: String::new(),
+            payload: None,
+            hub: None,
+            timestamp: 0,
+            tx_type: TxType::Genesis,
+            owner: String::new(),
+            linker: None,
+            code: None,
+            amount: None,
+            joule: None,
+            sign: String::new(),
+            proof_of_work: String::new(),
+            version: 0,
+        }
+    }
+
     /// # RLP编码
     /// ## 入参
     /// + `chain_id: u64`: 区块链id
@@ -207,7 +247,7 @@ impl Transaction {
     /// ## 出参
     /// + `BigUint`: pow
     /// + `String`: signature
-    fn sign(&mut self, chain_id: u64, sk: &[u8], cryptography: Cryptography) -> (BigUint, String) {
+    pub fn sign(&mut self, chain_id: u64, sk: &[u8], cryptography: Cryptography) -> (BigUint, String) {
         let key_pair = KeyPair::from_secret_key(sk, cryptography);
 
         let (pow, encoded) = self.encode(chain_id, cryptography);
@@ -218,6 +258,56 @@ impl Transaction {
 
         (pow, self.sign.to_string())
     }
+
+    pub fn to_raw_tx(self) -> RawTransaction {
+        RawTransaction {
+            height: self.height,
+            parent_hash: self.parent_hash,
+            daemon_hash: self.daemon_hash,
+            timestamp: self.timestamp,
+            owner: self.owner,
+            linker: self.linker.unwrap(),
+            ty: self.tx_type.name(),
+            hub: self.hub.unwrap_or(vec![]),
+            code: self.code.unwrap_or(String::new()),
+            code_hash: None,
+            payload: self.payload.unwrap_or(String::from("0x")),
+            amount: self.amount.unwrap_or(0),
+            joule: self.joule.unwrap_or(0),
+            sign: self.sign,
+            proof_of_work: self.proof_of_work,
+            version: self.version,
+            difficulty: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RawTransaction {
+    #[serde(rename = "number")]
+    pub height: u64,
+    #[serde(rename = "parentHash")]
+    pub parent_hash: String,
+    #[serde(rename = "daemonHash")]
+    pub daemon_hash: String,
+    pub timestamp: u64,
+    pub owner: String,
+    pub linker: String,
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub hub: Vec<String>,
+    pub code: String,
+    #[serde(rename = "codeHash")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_hash: Option<String>,
+    pub payload: String,
+    pub amount: u128,
+    pub joule: u128,
+    pub sign: String,
+    #[serde(rename = "proofOfWork")]
+    pub proof_of_work: String,
+    pub version: u16,
+    pub difficulty: u32,
 }
 
 #[cfg(test)]

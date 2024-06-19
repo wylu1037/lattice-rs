@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 model = { path = "../model" }
+crypto = { path = "../crypto" }
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
 async-trait = "0.1.80"

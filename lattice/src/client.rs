@@ -13,6 +13,7 @@ use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
 
+use crypto::Transaction;
 use model::block::{CurrentTDBlock, DBlock};
 use model::common::Address;
 use model::Error;
@@ -137,7 +138,12 @@ impl HttpClient {
     }
 
     /// # 发送已签名的交易
-    pub async fn send_raw_tx() {}
+    pub async fn send_raw_tx(&self, tx: Transaction) -> Result<String, Error> {
+        let body = JsonRpcBody::new("wallet_sendRawTBlock".to_string(), vec![json!(tx.to_raw_tx())]);
+        println!("{:?}", body.params);
+        let result: Result<String, Error> = self.send_json_rpc_request(&body).await;
+        result
+    }
 
     /// # 查询交易回执
     ///
