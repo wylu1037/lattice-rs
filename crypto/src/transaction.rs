@@ -32,13 +32,16 @@ pub struct Transaction {
     pub linker: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
+    #[serde(rename = "codeHash")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_hash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount: Option<u128>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub joule: Option<u128>,
     pub sign: String,
     pub proof_of_work: String,
-    pub version: u16,
+    pub version: TxVersion,
 }
 
 #[derive(Deserialize, Debug)]
@@ -98,6 +101,36 @@ impl Serialize for TxType {
     }
 }
 
+#[derive(Deserialize, Debug)]
+pub enum TxVersion {
+    /// 混沌-0
+    Chaos,
+    /// 盘古-1
+    PanGu,
+    /// 女娲-2
+    NuWa,
+    /// 最新-3
+    Latest,
+}
+
+impl TxVersion {
+    pub fn ordinal(&self) -> u16 {
+        match &self {
+            Self::Chaos => 0,
+            Self::PanGu => 1,
+            Self::NuWa => 2,
+            Self::Latest => 3,
+        }
+    }
+}
+
+impl Serialize for TxVersion {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let ordinal = self.ordinal();
+        serializer.serialize_u16(ordinal)
+    }
+}
+
 const DIFFICULTY_BYTE_ARRAY: Vec<u8> = vec![];
 const POW_BYTE_ARRAY: Vec<u8> = vec![];
 const DIFFICULTY: usize = 12;
@@ -121,11 +154,12 @@ impl Transaction {
             owner: String::new(),
             linker: None,
             code: None,
+            code_hash: None,
             amount: None,
             joule: None,
             sign: String::new(),
             proof_of_work: String::new(),
-            version: 0,
+            version: TxVersion::Latest,
         }
     }
 
@@ -139,7 +173,7 @@ impl Transaction {
     ///
     /// ## 出参
     /// + `Vec<u8>`
-    fn rlp_encode(&self, chain_id: u64, pow: String, cryptography: Cryptography, use_pow: bool, is_sign: bool) -> Vec<u8> {
+    fn rlp_encode(&mut self, chain_id: u64, pow: String, cryptography: Cryptography, use_pow: bool, is_sign: bool) -> Vec<u8> {
         let mut rlp = RlpStream::new();
         rlp.begin_list(15 + if is_sign { 2 } else { 0 });
 
@@ -166,6 +200,7 @@ impl Transaction {
                 hash_message(&bytes, cryptography)
             }
         };
+        self.set_code_hash(format!("0x{}", code_hash)); // update transaction code_hash
         let code_hash = HexString::new(code_hash.as_str()).decode();
         let payload = match &self.payload {
             None => vec![],
@@ -206,7 +241,7 @@ impl Transaction {
     ///
     /// ## 出参
     /// + `BigUint`: pow
-    fn pow(&self, chain_id: u64, cryptography: Cryptography) -> BigUint {
+    fn pow(&mut self, chain_id: u64, cryptography: Cryptography) -> BigUint {
         let mut i: u32 = 0;
         let min: BigUint = BigUint::from(1u32).shl(256 - DIFFICULTY);
 
@@ -231,7 +266,7 @@ impl Transaction {
     /// ## 出参
     /// + `BigUint`
     /// + `Vec<u8>`
-    fn encode(&self, chain_id: u64, cryptography: Cryptography) -> (BigUint, Vec<u8>) {
+    fn encode(&mut self, chain_id: u64, cryptography: Cryptography) -> (BigUint, Vec<u8>) {
         // let pow = self.pow(chain_id, cryptography);
         let pow = BigUint::from_bytes_be(HexString::new("0x00").decode().as_slice());
         let code = self.rlp_encode(chain_id, hex::encode(&pow.to_bytes_be()), cryptography, false, true);
@@ -270,15 +305,19 @@ impl Transaction {
             ty: self.tx_type.name(),
             hub: self.hub.unwrap_or(vec![]),
             code: self.code.unwrap_or(String::new()),
-            code_hash: None,
+            code_hash: self.code_hash,
             payload: self.payload.unwrap_or(String::from("0x")),
             amount: self.amount.unwrap_or(0),
             joule: self.joule.unwrap_or(0),
             sign: self.sign,
             proof_of_work: self.proof_of_work,
-            version: self.version,
+            version: self.version.ordinal(),
             difficulty: 0,
         }
+    }
+
+    pub fn set_code_hash(&mut self, code_hash: String) {
+        self.code_hash = Some(code_hash.to_string())
     }
 }
 

@@ -1185,6 +1185,7 @@ dependencies = [
 name = "lattice"
 version = "0.1.0"
 dependencies = [
+ "abi",
  "async-trait",
  "crypto",
  "futures-util",

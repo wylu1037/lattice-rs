@@ -13,6 +13,10 @@ pub struct Abi<'a> {
 }
 
 impl<'a> Abi<'a> {
+    pub fn new(abi: &'a str) -> Self {
+        Abi { abi }
+    }
+
     pub fn parse(&self) -> JsonAbi {
         let abi: JsonAbi = serde_json::from_str(&self.abi).unwrap();
         abi
@@ -28,8 +32,8 @@ impl<'a> Abi<'a> {
         Ok(function)
     }
 
-    pub fn encode(&self, function_name: String, args: Vec<Box<dyn Any>>) -> String {
-        let function = &self.function(function_name).unwrap();
+    pub fn encode(&self, function_name: &str, args: Vec<Box<dyn Any>>) -> String {
+        let function = &self.function(function_name.to_string()).unwrap();
         let args = convert_arguments(function.inputs.clone(), args).unwrap();
         let data_bytes = function.abi_encode_input(args.as_slice()).unwrap();
         format!("0x{}", hex::encode(data_bytes))
@@ -262,7 +266,7 @@ mod tests {
     #[test]
     fn test_encode() {
         let abi = Abi { abi: LEDGER_ABI };
-        let data = abi.encode("addProtocol".to_string(), vec![Box::new("100"), Box::new(vec!["0x516482b2880721149f75c9aea3b6a6a700022c78561f6e22fbd0d4f73e5e7432"])]);
+        let data = abi.encode("addProtocol", vec![Box::new("100"), Box::new(vec!["0x516482b2880721149f75c9aea3b6a6a700022c78561f6e22fbd0d4f73e5e7432"])]);
         let expected = "0xef7e9858000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001516482b2880721149f75c9aea3b6a6a700022c78561f6e22fbd0d4f73e5e7432";
         assert_eq!(expected, data);
     }

@@ -68,7 +68,9 @@ pub struct Response<T> {
     #[serde(rename = "jsonRpc")]
     json_rpc: String,
     id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<T>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<JsonRpcError>,
 }
 
@@ -140,7 +142,6 @@ impl HttpClient {
     /// # 发送已签名的交易
     pub async fn send_raw_tx(&self, tx: Transaction) -> Result<String, Error> {
         let body = JsonRpcBody::new("wallet_sendRawTBlock".to_string(), vec![json!(tx.to_raw_tx())]);
-        println!("{:?}", body.params);
         let result: Result<String, Error> = self.send_json_rpc_request(&body).await;
         result
     }
@@ -299,7 +300,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_receipt() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_receipt("0xe8df1f1e250cd0eac75eee3f8733e26e9422ef5ea88650ab54498cd8e4928144").await;
+        let response = client.get_receipt("0x616bf03baa685df9fddeff4701f170b30176e54120df726142a534f8f2b51873").await;
         match response {
             Ok(receipt) => println!("{:?}", receipt),
             Err(err) => println!("{:?}", err.to_string())
