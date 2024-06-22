@@ -10,7 +10,6 @@ use model::block::CurrentTDBlock;
 pub trait TransactionBuilder {
     /// 关联类型：在一个trait内部定义一个占位类型
     fn builder() -> Self;
-
     fn set_current_block(self, block: CurrentTDBlock) -> Self;
     fn set_owner(self, owner: &str) -> Self;
     fn set_linker(self, linker: &str) -> Self;

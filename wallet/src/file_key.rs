@@ -63,6 +63,12 @@ pub struct KdfParams {
 }
 
 impl FileKey {
+
+    fn new(file_key_json: &str) -> Self {
+        let file_key: FileKey = serde_json::from_str(file_key_json).unwrap();
+        file_key
+    }
+
     /// # 从私钥得到FileKey
     /// ## Parameters
     /// + `secret_key: &[u8]`: 私钥
@@ -168,5 +174,12 @@ mod tests {
         }
         let addr = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
         assert_eq!(file_key.address, addr)
+    }
+
+    #[test]
+    fn test_new_file_key_from_json() {
+        let json = r#"{"uuid":"0c9b1af7-23e4-4552-8d5b-cda4087a7779","address":"zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi","cipher":{"aes":{"cipher":"aes-128-ctr","iv":"1d1e3b6c9d8fdb254625888e5675cd1b"},"kdf":{"kdf":"scrypt","kdfParams":{"DKLen":32,"n":262144,"p":1,"r":8,"salt":"c55360cb01d2ea31f4a87eafad9b3254ec8c32a15f32ea985507121599066284"}},"cipherText":"c6ca9c0fbb08ad4546c68304100620a2f2cd2db9e80dd9c9f9d2425dab0cfbaa","mac":"fbaea48aaa56d5829f7e245f9efe397cab19d448560f8077e6324e16a07e9758"},"isGM":true}"#;
+        let file_key = FileKey::new(json);
+        assert_eq!(file_key.address, "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi")
     }
 }
