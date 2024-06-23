@@ -63,6 +63,12 @@ pub struct KdfParams {
 }
 
 impl FileKey {
+    /// # 从 json字符串 中反序列化得到 FileKey
+    /// ## Parameters:
+    /// + `file_key_json: &str`
+    ///
+    /// ## Returns:
+    /// + `FileKey`
 
     fn new(file_key_json: &str) -> Self {
         let file_key: FileKey = serde_json::from_str(file_key_json).unwrap();
