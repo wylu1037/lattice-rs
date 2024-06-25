@@ -1,6 +1,5 @@
 use std::fmt;
 use std::ops::Deref;
-use std::str::FromStr;
 
 use hmac::{Hmac, Mac};
 use memzero::Memzero;
@@ -120,7 +119,7 @@ impl ExtendedPrivateKey {
         let result = hmac.finalize().into_bytes();
         let (secret_key, chain_code) = result.split_at(32);
 
-        let mut sk = Default::default();
+        let sk: BigUint;
         match cryptography {
             Cryptography::Secp256k1 => {
                 let mut secret_key = SecretKey::from_slice(&secret_key).map_err(Error::Secp256k1)?;
@@ -130,7 +129,7 @@ impl ExtendedPrivateKey {
                 sk = BigUint::from_bytes_be(secret_key.secret_bytes().as_slice());
             }
             Cryptography::Sm2p256v1 => {
-                let mut secret_key = BigUint::from_bytes_be(secret_key);
+                let secret_key = BigUint::from_bytes_be(secret_key);
                 // 对私钥进行加法微调
                 sk = (secret_key + &self.secret_key) % CURVE_SM2P256V1.get_n();
             }

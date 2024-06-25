@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use bip39::Language;
 use bip39::Mnemonic as Bip39Mnemonic;
-use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct Mnemonic {

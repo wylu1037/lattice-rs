@@ -1,6 +1,6 @@
 use num_bigint::BigUint;
 
-trait IntoBigUint {
+pub trait IntoBigUint {
     fn into_big_uint(self) -> BigUint;
 }
 

@@ -1,4 +1,3 @@
-use std::hash::Hash;
 use std::ops::Shl;
 
 use num_bigint::BigUint;
@@ -65,7 +64,6 @@ impl TxType {
             TxType::Contract => vec![0x04],
             TxType::Execute => vec![0x05],
             TxType::Update => vec![0x06],
-            _ => vec![0x00],
         }
     }
 
@@ -78,7 +76,6 @@ impl TxType {
             TxType::Contract => "contract".to_string(),
             TxType::Execute => "execute".to_string(),
             TxType::Update => "update".to_string(),
-            _ => "".to_string(),
         }
     }
 }
@@ -241,6 +238,7 @@ impl Transaction {
     ///
     /// ## 出参
     /// + `BigUint`: pow
+    #[allow(dead_code)]
     fn pow(&mut self, chain_id: u64, cryptography: Cryptography) -> BigUint {
         let mut i: u32 = 0;
         let min: BigUint = BigUint::from(1u32).shl(256 - DIFFICULTY);
