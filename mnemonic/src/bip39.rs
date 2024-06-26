@@ -51,18 +51,21 @@ mod tests {
     #[test]
     fn test_new_mnemonic() {
         let mnemonic = Mnemonic::new(Language::English, 12);
-        println!("{}", mnemonic.words)
+        println!("{}", mnemonic.words);
+        assert_eq!(mnemonic.word_count, 12);
+        assert_eq!(mnemonic.lang, Language::English)
     }
 
     #[test]
     fn test_from_words() {
-        let mnemonic = Mnemonic::from("potato front rug inquiry old author dose little still apart below develop");
-        println!("{}", mnemonic.words)
+        let words = "potato front rug inquiry old author dose little still apart below develop";
+        let mnemonic = Mnemonic::from(words);
+        assert_eq!(mnemonic.words, words)
     }
 
     #[test]
     fn test_to_entropy() {
         let entropy = Mnemonic::from(WORDS).to_entropy();
-        println!("{:?}", entropy);
+        assert_eq!(entropy, vec![168, 203, 170, 244, 58, 105, 160, 30, 208, 100, 20, 213, 193, 72, 83, 30])
     }
 }
