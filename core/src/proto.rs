@@ -3,7 +3,7 @@ use std::io::Read;
 
 use protobuf::descriptor::FileDescriptorProto;
 use protobuf::reflect::FileDescriptor;
-use protobuf_json_mapping::parse_dyn_from_str;
+use protobuf_json_mapping::{parse_dyn_from_str, print_to_string};
 
 /// Dynamic message: See https://github.com/stepancheg/rust-protobuf/blob/master/protobuf-examples/dynamic/src/main.rs
 
@@ -75,8 +75,9 @@ pub fn deserialize_message(fd: FileDescriptor, message_name: &str, bytes: Vec<u8
     let mut message = message_descriptor.new_instance();
     message.merge_from_bytes_dyn(bytes.as_slice()).unwrap();
 
-    //protobuf::text_format::print_to_string(message.as_ref())
-    format!("{}", message.to_string())
+    // protobuf::text_format::print_to_string(message.as_ref());
+    // format!("{}", message.to_string())
+    print_to_string(message.as_ref()).unwrap()
 }
 
 
@@ -139,6 +140,6 @@ mod test {
         let file_descriptor = make_file_descriptor(PROTO);
         let json = deserialize_message(file_descriptor, "Student", vec![10, 4, 74, 97, 99, 107, 16, 18, 26, 13, 10, 5, 65, 110, 72, 117, 105, 18, 4, 76, 117, 65, 110]);
 
-        assert_eq!(r#"name: "Jack" age: 18 address {province: "AnHui" city: "LuAn"}"#, json)
+        assert_eq!(r#"{"name": "Jack", "age": 18, "address": {"province": "AnHui", "city": "LuAn"}}"#, json)
     }
 }
