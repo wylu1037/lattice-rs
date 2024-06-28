@@ -206,7 +206,7 @@ impl<'a> WsClient<'a> {
     /// 建立websocket连接
     async fn connect(&self) -> (WsWrite, WsRead) {
         let (ws_stream, _) = connect_async(Url::parse(self.get_ws_conn_url().as_str()).unwrap()).await.expect("Failed to build ws connect");
-        let (mut write, mut read) = ws_stream.split();
+        let (write, read) = ws_stream.split();
         (write, read)
     }
 
@@ -254,7 +254,7 @@ impl<'a> WsClient<'a> {
     pub async fn disconnect(mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>) -> bool {
         let result = write.send(Message::Close(None)).await;
         match result {
-            Ok(result_) => true,
+            Ok(_) => true,
             Err(e) => {
                 eprintln!("{}", e);
                 false
@@ -320,15 +320,15 @@ mod tests {
     #[tokio::test]
     async fn test_monitor_data() {
         // create multi-producer single-consumer channel
-        let (sender, mut receiver) = mpsc::channel(10);
-        let mut client = WsClient::new("192.168.1.185", 12999);
+        let (sender, receiver) = mpsc::channel(10);
+        let client = WsClient::new("192.168.1.185", 12999);
 
         let (write, read) = client.connect().await;
 
-        let send_handler = tokio::spawn(async move {
+        let _send_handler = tokio::spawn(async move {
             client.send(write, JsonRpcBody::new_ws_monitor().as_str()).await;
         });
-        let receive_handler = tokio::spawn(async move {
+        let _receive_handler = tokio::spawn(async move {
             WsClient::receive(read, sender).await;
         });
 

@@ -42,7 +42,7 @@ impl Options {
 }
 
 impl<'a> LatticeClient<'a> {
-    fn new(chain_id: u64, node_ip: &'a str, node_port: u16, sk: &'a str, account_address: Option<String>, options: Option<Options>) -> Self {
+    pub fn new(chain_id: u64, node_ip: &'a str, node_port: u16, sk: &'a str, account_address: Option<String>, options: Option<Options>) -> Self {
         let options: Options = options.unwrap_or_else(|| Options { cryptography: Some(Cryptography::Sm2p256v1) });
         let address = match account_address {
             None => {
@@ -96,6 +96,6 @@ mod test {
     async fn test_call_contract() {
         let abi_string = r#"[{"inputs":[],"name":"decrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getCount","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"incrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
         let lattice = LatticeClient::new(1, "192.168.1.185", 13000, "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb", None, None);
-        let result = lattice.call_contract("zltc_nbrZcx1AzBXC361nWSwry8JgSJNEzrNiD", abi_string, "incrementCounter", vec![], None).await;
+        let _result = lattice.call_contract("zltc_nbrZcx1AzBXC361nWSwry8JgSJNEzrNiD", abi_string, "incrementCounter", vec![], None).await;
     }
 }

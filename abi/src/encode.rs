@@ -12,15 +12,8 @@ use model::{Error, HexString};
 use model::common::Address;
 
 const BOOL_TY: &str = "bool";
-const INT_TY: &str = "int";
-const UINT_TY: &str = "uint";
-const FIXED_BYTES_TY: &str = "";
 const ADDRESS_TY: &str = "address";
-const FUNCTION_TY: &str = "function";
-const BYTES_TY: &str = "bytes";
 const STRING_TY: &str = "string";
-const ARRAY_TY: &str = "";
-const FIXED_ARRAY_TY: &str = "[%d]";
 const TUPLE_TY: &str = "tuple";
 
 /// # 转换参数为Rust abi中对应的类型数据
@@ -201,7 +194,7 @@ fn parse_bytes(ty: &str) -> (String, usize) {
     let ty = c.get(1).unwrap();
     let size = c.get(2).unwrap();
     let size: usize = size.as_str().parse().unwrap_or_else(|_| 0);
-    (ty.as_str().clone().to_string(), size)
+    (ty.as_str().to_string(), size)
 }
 
 fn is_uint(ty: &str) -> bool {
@@ -215,7 +208,7 @@ fn parse_uint(ty: &str) -> (String, usize) {
     let ty = c.get(1).unwrap();
     let size = c.get(2).unwrap();
     let size: usize = size.as_str().parse().unwrap_or_else(|_| 0);
-    (ty.as_str().clone().to_string(), size)
+    (ty.as_str().to_string(), size)
 }
 
 fn is_int(ty: &str) -> bool {
@@ -229,7 +222,7 @@ fn parse_int(ty: &str) -> (String, usize) {
     let ty = c.get(1).unwrap();
     let size = c.get(2).unwrap();
     let size: usize = size.as_str().parse().unwrap_or_else(|_| 0);
-    (ty.as_str().clone().to_string(), size)
+    (ty.as_str().to_string(), size)
 }
 
 fn is_array(ty: &str) -> bool {
@@ -243,7 +236,7 @@ fn parse_array(ty: &str) -> (String, usize) {
     let ty = c.get(1).unwrap();
     let size = c.get(3).unwrap();
     let size: usize = size.as_str().parse().unwrap_or_else(|_| 0);
-    (ty.as_str().clone().to_string(), size)
+    (ty.as_str().to_string(), size)
 }
 
 #[cfg(test)]
