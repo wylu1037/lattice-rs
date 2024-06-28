@@ -54,12 +54,12 @@ pub fn convert_arguments(types: Vec<Param>, args: Vec<Box<dyn Any>>) -> Result<V
 pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) -> Result<DynSolValue, Error> {
     match ty {
         STRING_TY => {
-            let arg = arg.downcast_ref::<&str>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
-                Some(v) => {
-                    Ok(DynSolValue::String((*v).to_string()))
-                }
+            let arg_str = arg.downcast_ref::<&str>();
+            let arg_string = arg.downcast_ref::<String>();
+            return match (arg_str, arg_string) {
+                (Some(v), _) => Ok(DynSolValue::String((*v).to_string())),
+                (_, Some(v)) => Ok(DynSolValue::String(v.to_string())),
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
             };
         }
         BOOL_TY => {
@@ -147,13 +147,18 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
             if size == 0 {
                 return Err(Error::new(&format!("unsupported arg type, {}", ty)));
             }
-            let arg = arg.downcast_ref::<&str>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
-                Some(v) => {
+            let arg_str = arg.downcast_ref::<&str>();
+            let arg_string = arg.downcast_ref::<String>();
+            return match (arg_str, arg_string) {
+                (Some(v), _) => {
                     let num = U256::from_str(*v).unwrap();
                     Ok(DynSolValue::Uint(num, size))
                 }
+                (_, Some(v)) => {
+                    let num = U256::from_str(v).unwrap();
+                    Ok(DynSolValue::Uint(num, size))
+                }
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
             };
         }
         _ if is_int(ty) => {
@@ -161,13 +166,18 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
             if size == 0 {
                 return Err(Error::new(&format!("unsupported arg type, {}", ty)));
             }
-            let arg = arg.downcast_ref::<&str>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
-                Some(v) => {
+            let arg_str = arg.downcast_ref::<&str>();
+            let arg_string = arg.downcast_ref::<String>();
+            return match (arg_str, arg_string) {
+                (Some(v), _) => {
                     let num = I256::from_str(*v).unwrap();
                     Ok(DynSolValue::Int(num, size))
                 }
+                (_, Some(v)) => {
+                    let num = I256::from_str(v).unwrap();
+                    Ok(DynSolValue::Int(num, size))
+                }
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
             };
         }
         _ => Err(Error::new(&format!("unsupported arg type, {}", ty)))

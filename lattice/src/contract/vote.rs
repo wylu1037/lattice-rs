@@ -3,6 +3,7 @@ use crypto::Transaction;
 use crate::builder::{ExecuteContractBuilder, TransactionBuilder};
 use crate::impl_builtin_contract;
 
+/// 内置的投票合约
 const VOTE_ABI_DEFINITION: &str = r#"[
     {
         "inputs": [
@@ -75,7 +76,7 @@ impl_builtin_contract!(VoteBuiltinContract, VOTE_ABI_DEFINITION, VOTE_CONTRACT_A
 
 impl VoteBuiltinContract {
     pub fn new_vote_tx(&self, proposal_id: &str, approve: bool) -> Transaction {
-        let approve: u8 = if approve { 1 } else { 0 };
+        let approve: String = if approve { String::from("1") } else { String::from("0") };
         let data = self.encode_args("vote", vec![Box::new(proposal_id.to_string()), Box::new(approve)]);
 
         ExecuteContractBuilder::builder()
@@ -99,12 +100,16 @@ mod test {
         let lattice = LatticeClient::new(1, "192.168.1.185", 13000, "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb", None, None);
         let block = lattice.http_client.get_current_tx_daemon_block(&Address::new(owner)).await.unwrap();
 
-        let mut tx = VoteBuiltinContract::new()
-            .new_vote_tx("0x012629af43a2e7cf024cdaeb8c108078b3b62a9f171300000000000000", true);
+        let mut tx = VoteBuiltinContract::new().new_vote_tx("0x012629af43a2e7cf024cdaeb8c108078b3b62a9f171300000000000000", true);
 
         tx.height = block.current_tblock_height + 1;
         tx.parent_hash = block.current_tblock_hash;
         tx.daemon_hash = block.current_dblock_hash;
-        tx.owner = owner.to_string();
+
+        let res = lattice.sign_and_send_tx(tx).await;
+        match res {
+            Err(err) => println!("Err {}", err),
+            Ok(v) => println!("Hash {}", v)
+        }
     }
 }

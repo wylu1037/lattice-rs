@@ -2,6 +2,7 @@ use std::any::Any;
 
 use abi::abi::Abi;
 use crypto::sign::KeyPair;
+use crypto::Transaction;
 use model::{Cryptography, Error, HexString};
 use model::common::Address;
 
@@ -64,7 +65,7 @@ impl<'a> LatticeClient<'a> {
         }
     }
 
-    async fn call_contract(&self, contract_address: &str, abi: &str, fn_name: &str, args: Vec<Box<dyn Any>>, payload: Option<&str>) -> Result<String, Error> {
+    pub async fn call_contract(&self, contract_address: &str, abi: &str, fn_name: &str, args: Vec<Box<dyn Any>>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
         let block = self.http_client.get_current_tx_daemon_block(&Address::new(&self.account_address)).await.unwrap();
         let abi = Abi::new(abi);
@@ -85,6 +86,19 @@ impl<'a> LatticeClient<'a> {
         transaction.sign = signature;
 
         self.http_client.send_raw_tx(transaction).await
+    }
+
+    pub async fn sign_and_send_tx(self, mut tx: Transaction) -> Result<String, Error> {
+        if tx.owner.is_empty() {
+            tx.owner = self.account_address;
+        }
+
+        let sk = HexString::new(&self.sk).decode();
+        let options = &self.options;
+        let (_, signature) = tx.sign(self.chain_id, &sk, options.get_cryptography());
+        tx.sign = signature;
+
+        self.http_client.send_raw_tx(tx).await
     }
 }
 
