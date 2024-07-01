@@ -35,6 +35,13 @@ macro_rules! impl_transaction_builder {
                 $builder { transaction }
             }
 
+            /// # 设置交易的当前区块信息，包括账户高度，父交易哈希，父区块哈希等等
+            ///
+            /// ## 入参
+            /// + `block: CurrentTDBlock`:
+            ///
+            /// ## 出参
+            /// + `Self`
             fn set_current_block(mut self, block: CurrentTDBlock) -> Self {
                 self.transaction.height = block.current_tblock_height + 1;
                 self.transaction.parent_hash = block.current_tblock_hash;
@@ -42,21 +49,49 @@ macro_rules! impl_transaction_builder {
                 self
             }
 
+            /// # 设置交易的所有者（发送者）
+            ///
+            /// ## 入参
+            /// + `owner: &str`: 账户地址，示例：zltc_UXpJCXdhTkg6edriiaRUVkYgTfv2Z5npe
+            ///
+            /// ## 出参
+            /// + `Self`
             fn set_owner(mut self, owner: &str) -> Self {
                 self.transaction.owner = owner.to_string();
                 self
             }
 
+            /// # 设置交易的接收者
+            ///
+            /// ## 入参
+            /// + `linker: &str`: 账户地址，示例：zltc_nbrZcx1AzBXC361nWSwry8JgSJNEzrNiD
+            ///
+            /// ## 出参
+            /// + `Self`
             fn set_linker(mut self, linker: &str) -> Self {
                 self.transaction.linker = Some(linker.to_string());
                 self
             }
 
+            /// # 设置合约的data
+            ///
+            /// ## 入参
+            /// + `code: &str`:
+            ///
+            /// ## 出参
+            /// + `Self`
             fn set_code(mut self, code: &str) -> Self {
                 self.transaction.code = Some(code.to_string());
                 self
             }
 
+            /// # 设置交易的备注，hex string
+            ///
+            /// ## 入参
+            /// + `payload: &str`: payload, 示例：0x0102
+            ///
+            /// ## 出参
+            /// + `Self`
             fn set_payload(mut self, payload: &str) -> Self {
                 self.transaction.payload = Some(payload.to_string());
                 self
