@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use futures_util::TryFutureExt;
+
 use abi::abi::Abi;
 use crypto::sign::KeyPair;
 use crypto::Transaction;
@@ -29,6 +31,35 @@ pub struct LatticeClient<'a> {
     /// 节点的http client
     pub http_client: HttpClient,
 }
+
+/// 链配置
+pub struct ChainConfig {
+    /// 区块链ID
+    chain_id: u64,
+    /// Default Sm2p256v1
+    cryptography: Cryptography,
+}
+
+/// 节点配置
+pub struct NodeConfig {
+    /// 节点IP
+    ip: String,
+    /// 节点http端口
+    http_port: u16,
+    /// websocket端口
+    websocket_port: u16,
+}
+
+/// 凭证配置
+pub struct CredentialConfig {
+    /// 私钥
+    sk: String,
+    /// 账户地址
+    account_address: Option<String>,
+    /// 身份密码
+    passphrase: Option<String>,
+}
+
 
 /// 可选项
 pub struct Options {
