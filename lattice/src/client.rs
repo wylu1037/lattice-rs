@@ -140,9 +140,34 @@ impl HttpClient {
     }
 
     /// # 发送已签名的交易
-    pub async fn send_raw_tx(&self, tx: Transaction) -> Result<String, Error> {
-        let body = JsonRpcBody::new("wallet_sendRawTBlock".to_string(), vec![json!(tx.to_raw_tx())]);
+    ///
+    /// ## 入参
+    /// + `&self`:
+    /// + `signed_tx`: 已签名的交易
+    ///
+    /// ## 出参
+    /// + `Result<String, Error>`
+    ///   + `Ok(String)`
+    ///   + `Err(err)`
+    pub async fn send_raw_tx(&self, signed_tx: Transaction) -> Result<String, Error> {
+        let body = JsonRpcBody::new("wallet_sendRawTBlock".to_string(), vec![json!(signed_tx.to_raw_tx())]);
         let result: Result<String, Error> = self.send_json_rpc_request(&body).await;
+        result
+    }
+
+    /// # 预执行合约
+    ///
+    /// ## 入参
+    /// + `&self`:
+    /// + `unsigned_tx`: 未签名的交易
+    ///
+    /// ## 出参
+    /// + `Result<Receipt, Error>`
+    ///   + `Ok(Receipt)`
+    ///   + `Err(err)`
+    pub async fn pre_call_contract(&self, unsigned_tx: Transaction) -> Result<Receipt, Error> {
+        let body = JsonRpcBody::new("wallet_preExecuteContract".to_string(), vec![json!(unsigned_tx.to_raw_tx())]);
+        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body).await;
         result
     }
 

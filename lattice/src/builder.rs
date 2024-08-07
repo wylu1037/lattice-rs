@@ -106,7 +106,7 @@ macro_rules! impl_transaction_builder {
 
 impl_transaction_builder!(TransferBuilder, TxType::Send);
 impl_transaction_builder!(DeployContractBuilder, TxType::Contract);
-impl_transaction_builder!(ExecuteContractBuilder, TxType::Execute);
+impl_transaction_builder!(CallContractBuilder, TxType::Execute);
 
 #[cfg(test)]
 mod test {
@@ -191,7 +191,7 @@ mod test {
                 let abi_string = r#"[{"inputs":[],"name":"decrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getCount","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"incrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
                 let code = Abi::new(abi_string).encode("incrementCounter", vec![]);
 
-                let mut transaction = ExecuteContractBuilder::builder()
+                let mut transaction = CallContractBuilder::builder()
                     .set_current_block(block)
                     .set_owner("zltc_UXpJCXdhTkg6edriiaRUVkYgTfv2Z5npe")
                     .set_linker("zltc_dqUuNMBGSKWC6nquq18SNPRBftBp7Qm6g")

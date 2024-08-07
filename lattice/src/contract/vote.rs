@@ -1,6 +1,6 @@
 use crypto::Transaction;
 
-use crate::builder::{ExecuteContractBuilder, TransactionBuilder};
+use crate::builder::{CallContractBuilder, TransactionBuilder};
 use crate::impl_builtin_contract;
 
 /// 内置的投票合约
@@ -79,7 +79,7 @@ impl VoteBuiltinContract {
         let approve: String = if approve { String::from("1") } else { String::from("0") };
         let data = self.encode_args("vote", vec![Box::new(proposal_id.to_string()), Box::new(approve)]);
 
-        ExecuteContractBuilder::builder()
+        CallContractBuilder::builder()
             .set_linker(&self.address)
             .set_code(&data)
             .build()
@@ -89,15 +89,30 @@ impl VoteBuiltinContract {
 #[cfg(test)]
 mod test {
     use model::common::Address;
+    use model::Cryptography;
 
-    use crate::lattice::LatticeClient;
+    use crate::lattice::{ChainConfig, ConnectingNodeConfig, CredentialConfig, LatticeClient};
 
     use super::*;
 
     #[tokio::test]
     async fn test_new_vote_tx() {
         let owner = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
-        let lattice = LatticeClient::new(1, "192.168.1.185", 13000, "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb", None, None);
+        let chain_config = ChainConfig {
+            chain_id: 1,
+            cryptography: Cryptography::Sm2p256v1,
+        };
+        let connecting_node_config = ConnectingNodeConfig {
+            ip: String::from("192.168.1.185"),
+            http_port: 13000,
+            websocket_port: 13001,
+        };
+        let credential_config = CredentialConfig {
+            sk: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb"),
+            account_address: Some(String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi")),
+            passphrase: None,
+        };
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, credential_config, None);
         let block = lattice.http_client.get_current_tx_daemon_block(&Address::new(owner)).await.unwrap();
 
         let mut tx = VoteBuiltinContract::new().new_vote_tx("0x012629af43a2e7cf024cdaeb8c108078b3b62a9f171300000000000000", true);
