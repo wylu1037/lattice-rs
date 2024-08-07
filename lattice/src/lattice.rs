@@ -6,6 +6,7 @@ use crypto::Transaction;
 use model::{Cryptography, Error, HexString};
 use model::block::CurrentTDBlock;
 use model::common::Address;
+use model::constants::ZERO_HASH_STRING;
 use model::receipt::Receipt;
 
 use crate::builder::{CallContractBuilder, TransactionBuilder};
@@ -201,8 +202,8 @@ impl LatticeClient {
         let transaction = CallContractBuilder::builder()
             .set_current_block(
                 CurrentTDBlock {
-                    current_dblock_hash: String::from("0x0000000000000000000000000000000000000000000000000000000000000000"),
-                    current_tblock_hash: String::from("0x0000000000000000000000000000000000000000000000000000000000000000"),
+                    current_dblock_hash: ZERO_HASH_STRING.to_string(),
+                    current_tblock_hash: ZERO_HASH_STRING.to_string(),
                     current_tblock_height: 0,
                 })
             .set_owner(&self.get_owner())
