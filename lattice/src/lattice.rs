@@ -85,8 +85,6 @@ pub struct LatticeClient {
 
 /// 可选项
 pub struct Options {
-    /// Default Sm2p256v1
-    cryptography: Option<Cryptography>,
     /// 是否启用缓存
     enable_cache: Option<bool>,
     /// 缓存的过期时间，默认 5s
@@ -108,15 +106,10 @@ pub struct CachedBlock {
 impl Options {
     fn default() -> Self {
         Options {
-            cryptography: Some(Cryptography::Sm2p256v1),
             enable_cache: Some(false),
             cache_expiration_seconds: Some(5),
             daemon_hash_expiration_seconds: Some(15),
         }
-    }
-
-    fn get_cryptography(&self) -> Cryptography {
-        self.cryptography.unwrap_or(Cryptography::Sm2p256v1)
     }
 }
 
@@ -188,8 +181,7 @@ impl LatticeClient {
 
         // Sign transaction
         let sk = HexString::new(&self.get_sk()).decode();
-        let options = &self.options;
-        let (_, signature) = transaction.sign(self.get_chain_id(), &sk, options.get_cryptography());
+        let (_, signature) = transaction.sign(self.get_chain_id(), &sk, self.chain_config.cryptography);
         transaction.sign = signature;
 
         self.http_client.send_raw_tx(transaction).await
@@ -221,8 +213,7 @@ impl LatticeClient {
         }
 
         let sk = HexString::new(&self.get_sk()).decode();
-        let options = &self.options;
-        let (_, signature) = tx.sign(self.get_chain_id(), &sk, options.get_cryptography());
+        let (_, signature) = tx.sign(self.get_chain_id(), &sk, self.chain_config.cryptography);
         tx.sign = signature;
 
         self.http_client.send_raw_tx(tx).await
