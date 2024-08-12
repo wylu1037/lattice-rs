@@ -53,6 +53,7 @@ pub struct CredentialConfig {
     pub passphrase: Option<String>,
 }
 
+/// 重试策略
 pub struct RetryPolicy {}
 
 /// 重试类型枚举
