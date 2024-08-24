@@ -70,8 +70,7 @@ impl FileKey {
     ///
     /// ## Returns:
     /// + `FileKey`
-
-    fn new(file_key_json: &str) -> Self {
+    pub fn new(file_key_json: &str) -> Self {
         let file_key: FileKey = serde_json::from_str(file_key_json).unwrap();
         file_key
     }
@@ -84,7 +83,7 @@ impl FileKey {
     ///
     /// ## Returns
     /// + FileKey
-    fn from_secret_key(secret_key: &[u8], password: &[u8], curve: Curve) -> Self {
+    pub fn from_secret_key(secret_key: &[u8], password: &[u8], curve: Curve) -> Self {
         let key_pair = KeyPair::from_secret_key(secret_key, curve);
         FileKey {
             uuid: Uuid::new_v4().to_string(),
@@ -101,7 +100,7 @@ impl FileKey {
     ///
     /// ## 出参
     /// + `KeyPair`: 密钥对
-    fn decrypt(&self, password: &str) -> Result<KeyPair, Error> {
+    pub fn decrypt(&self, password: &str) -> Result<KeyPair, Error> {
         let key = scrypt_key(password.as_bytes(), &self.cipher.kdf.kdf_params.salt);
         let aes_key = hex::decode(&key[0..32]).unwrap();
 

@@ -8,16 +8,17 @@ use model::block::CurrentTDBlock;
 use model::common::Address;
 use model::constants::ZERO_HASH_STRING;
 use model::receipt::Receipt;
+use wallet::file_key::FileKey;
 
 use crate::builder::{CallContractBuilder, TransactionBuilder};
 use crate::client::HttpClient;
 
 /// 链配置
 pub struct ChainConfig {
-    /// 区块链ID
-    pub chain_id: u64,
     /// 椭圆曲线，Default Sm2p256v1
     pub curve: Curve,
+    /// 是否不包含通证，false:有通证 true:无通证
+    pub token_less: bool,
 }
 
 /// 连接节点配置
@@ -44,14 +45,17 @@ impl ConnectingNodeConfig {
 }
 
 /// 凭证配置
-pub struct CredentialConfig {
-    /// 私钥
-    pub sk: String,
+pub struct Credentials {
     /// 账户地址
     pub account_address: Option<String>,
+    /// 私钥
+    pub sk: String,
     /// 身份密码，需要和 FileKey 一起使用
     pub passphrase: Option<String>,
+    /// file_key
+    pub file_key: Option<String>,
 }
+
 
 /// 重试策略
 pub struct RetryPolicy {}
@@ -74,8 +78,8 @@ pub struct LatticeClient {
     /// 连接节点的配置
     connecting_node_config: ConnectingNodeConfig,
 
-    /// 凭证信息配置
-    credential_config: CredentialConfig,
+    /// 凭证信息
+    credentials: Credentials,
 
     /// 可选配置
     options: Options,
@@ -123,82 +127,93 @@ impl LatticeClient {
     /// ## 出参
     /// + `String`
     fn get_owner(&self) -> String {
-        let credential_config = &self.credential_config;
-        let owner = credential_config.account_address.as_ref().unwrap();
+        let credentials = &self.credentials;
+        let owner = credentials.account_address.as_ref().unwrap();
         owner.to_string()
     }
 
     /// # 从credential中获取私钥
     ///
-    /// ## 入参
-    /// + `&self`:
-    ///
     /// ## 出参
-    /// + `String`
+    /// + `String`: 16进制的私钥
     fn get_sk(&self) -> String {
-        let credential_config = &self.credential_config;
-        credential_config.sk.to_string()
+        let credentials = &self.credentials;
+        return if credentials.sk.is_empty() {
+            // decrypt the private key
+            let file_key = credentials.file_key.clone().expect("FileKey不能为空").as_str();
+            let file_key = FileKey::new(file_key);
+            let passphrase = credentials.passphrase.clone().expect("身份密码不能为空").as_str();
+            let result = file_key.decrypt(passphrase);
+            let sk = result.unwrap().secret_key.to_str_radix(16);
+            sk
+        } else {
+            credentials.sk.to_string()
+        };
     }
 
-    fn get_chain_id(&self) -> u64 {
-        let chain_config = &self.chain_config;
-        chain_config.chain_id
-    }
-
-    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, mut credential_config: CredentialConfig, options: Option<Options>) -> Self {
+    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, mut credentials: Credentials, options: Option<Options>) -> Self {
         let options: Options = options.unwrap_or_else(|| Options::default());
-        let address = match credential_config.account_address {
+        let address = match credentials.account_address {
             Some(addr) => addr,
             None => {
-                let key_pair = KeyPair::from_secret_key(&HexString::new(&credential_config.sk).decode(), chain_config.curve);
+                let key_pair = KeyPair::from_secret_key(&HexString::new(&credentials.sk).decode(), chain_config.curve);
                 key_pair.address()
             }
         };
-        credential_config.account_address = Some(address);
+        credentials.account_address = Some(address);
         let http_client = connecting_node_config.new_http_client();
 
         LatticeClient {
             chain_config,
             connecting_node_config,
-            credential_config,
+            credentials,
             options,
             http_client,
         }
     }
 
-    /// # 
+    /// # 调用合约
     ///
     /// ## 入参
-    /// + `contract_address`: 合约地址
-    /// + `abi`
+    /// + `chain_id: u64`: 链ID
+    /// + `contract_address: &str`: 合约地址
+    /// + `code: &str`:
+    /// + `amount: Option<u128>`
+    /// + `joule: Option<u128>`
+    /// + `payload: Option<&str>`
     ///
     /// ## 出参
-    pub async fn call_contract(&self, contract_address: &str, abi: &str, fn_name: &str, args: Vec<Box<dyn Any>>, payload: Option<&str>) -> Result<String, Error> {
+    pub async fn call_contract(&self, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
         let block = self.http_client.get_current_tx_daemon_block(&Address::new(&self.get_owner())).await.unwrap();
-        let abi = Abi::new(abi);
-        let data = abi.encode(fn_name, args);
 
         let mut transaction = CallContractBuilder::builder()
             .set_current_block(block)
             .set_owner(&self.get_owner())
             .set_linker(contract_address)
-            .set_code(&data)
+            .set_code(code)
             .set_payload(payload.unwrap_or("0x"))
             .build();
 
         // Sign transaction
         let sk = HexString::new(&self.get_sk()).decode();
-        let (_, signature) = transaction.sign(self.get_chain_id(), &sk, self.chain_config.curve);
+        let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
         self.http_client.send_raw_tx(transaction).await
     }
 
-    pub async fn pre_call_contract(&self, contract_address: &str, abi: &str, fn_name: &str, args: Vec<Box<dyn Any>>, payload: Option<&str>) -> Result<Receipt, Error> {
-        let abi = Abi::new(abi);
-        let data = abi.encode(fn_name, args);
-
+    /// # 预调用合约（不会上链）
+    ///
+    /// ## 入参
+    /// + `chain_id: u64`: 链ID
+    /// + `contract_address: &str`: 合约地址
+    /// + `code: &str`: 合约代码
+    /// + `payload: Option<&str>`: 交易备注
+    ///
+    /// ## 出参
+    /// + `Result<Receipt, Error>`
+    pub async fn pre_call_contract(&self, chain_id: u64, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
         let transaction = CallContractBuilder::builder()
             .set_current_block(
                 CurrentTDBlock {
@@ -208,20 +223,20 @@ impl LatticeClient {
                 })
             .set_owner(&self.get_owner())
             .set_linker(contract_address)
-            .set_code(&data)
+            .set_code(code)
             .set_payload(payload.unwrap_or("0x"))
             .build();
 
         self.http_client.pre_call_contract(transaction).await
     }
 
-    pub async fn sign_and_send_tx(self, mut tx: Transaction) -> Result<String, Error> {
+    pub async fn sign_and_send_tx(self, chain_id: u64, mut tx: Transaction) -> Result<String, Error> {
         if tx.owner.is_empty() {
             tx.owner = self.get_owner();
         }
 
         let sk = HexString::new(&self.get_sk()).decode();
-        let (_, signature) = tx.sign(self.get_chain_id(), &sk, self.chain_config.curve);
+        let (_, signature) = tx.sign(chain_id, &sk, self.chain_config.curve);
         tx.sign = signature;
 
         self.http_client.send_raw_tx(tx).await
@@ -236,21 +251,24 @@ mod test {
     async fn test_pre_call_contract() {
         let abi_string = r#"[{"inputs":[],"name":"decrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getCount","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"incrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
         let chain_config = ChainConfig {
-            chain_id: 1,
             curve: Curve::Sm2p256v1,
+            token_less: true,
         };
         let connecting_node_config = ConnectingNodeConfig {
             ip: String::from("192.168.1.185"),
-            http_port: 13000,
+            http_port: 13800,
             websocket_port: 13001,
         };
-        let credential_config = CredentialConfig {
+        let credentials = Credentials {
             sk: String::from("0xdbd91293f324e5e49f040188720c6c9ae7e6cc2b4c5274120ee25808e8f4b6a7"),
             account_address: Some(String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s")),
             passphrase: None,
+            file_key: None,
         };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, credential_config, None);
-        let _result = lattice.pre_call_contract("zltc_d1pTRCCH2F6McFCmXYCB743L7spuNtw31", abi_string, "getCount", vec![], None).await;
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, credentials, None);
+        let abi = Abi::new(abi_string);
+        let code = abi.encode("getCount", vec![]);
+        let _result = lattice.pre_call_contract(2, "zltc_d1pTRCCH2F6McFCmXYCB743L7spuNtw31", &code, None).await;
         if let Ok(hash) = _result {
             println!("{:?}", hash)
         }
