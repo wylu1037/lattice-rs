@@ -1,17 +1,18 @@
 use sha256::digest;
 
-use model::Cryptography;
+use model::Curve;
+
 use crate::hash::hash_message;
 
 /// # 公钥转地址
 /// ## 入参
 /// + `public_key: &[u8]`: 公钥，`0xaaa53093e7fc18c3335876afc3aa604cf624cf7091685f42e09ee69cab3a6bcee8e0297eda17b6d8d3bfda8cc44945304ffb8bc40b5b7ff47e132c0c3fa0bd7f`
-/// + `cryptography: Cryptography`:
+/// + `curve: Curve`: 椭圆曲线
 ///
 /// ## 出参
 /// + `String`: Lattice地址，示例：zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi
-pub fn public_key_to_address(public_key: &[u8], cryptography: Cryptography) -> String {
-    let key_hash = hash_message(public_key, cryptography);
+pub fn public_key_to_address(public_key: &[u8], curve: Curve) -> String {
+    let key_hash = hash_message(public_key, curve);
     let eth = &hex::decode(key_hash.as_bytes()).unwrap()[12..];
     eth_to_lattice(eth)
 }
@@ -49,7 +50,7 @@ pub fn lattice_to_eth(addr: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use model::enums::Cryptography;
+    use model::enums::Curve;
     use model::HexString;
 
     use super::*;
@@ -57,7 +58,7 @@ mod tests {
     #[test]
     fn test_public_key_to_address() {
         let pk = HexString { hex_string: String::from("0xaaa53093e7fc18c3335876afc3aa604cf624cf7091685f42e09ee69cab3a6bcee8e0297eda17b6d8d3bfda8cc44945304ffb8bc40b5b7ff47e132c0c3fa0bd7f") };
-        let addr = public_key_to_address(pk.decode().as_slice(), Cryptography::Sm2p256v1);
+        let addr = public_key_to_address(pk.decode().as_slice(), Curve::Sm2p256v1);
         assert_eq!(String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi"), addr)
     }
 

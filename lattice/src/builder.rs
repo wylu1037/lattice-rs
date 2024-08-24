@@ -113,7 +113,7 @@ mod test {
     use std::time::Duration;
 
     use abi::abi::Abi;
-    use model::{Cryptography, HexString};
+    use model::{Curve, HexString};
     use model::common::Address;
 
     use crate::client::HttpClient;
@@ -134,7 +134,7 @@ mod test {
                     .set_payload("0x0102")
                     .build();
                 let sk = HexString::new("0x00a50da54a1987bf5ddd773e9c151bd40aa5d1281b8936dbdec93a9d0a04e4ca").decode();
-                let (_pow, signature) = transaction.sign(1, &sk, Cryptography::Sm2p256v1);
+                let (_pow, signature) = transaction.sign(1, &sk, Curve::Sm2p256v1);
                 transaction.sign = signature;
 
                 let result = client.send_raw_tx(transaction).await;
@@ -161,7 +161,7 @@ mod test {
                     .set_code(data)
                     .build();
                 let sk = HexString::new("0x00a50da54a1987bf5ddd773e9c151bd40aa5d1281b8936dbdec93a9d0a04e4ca").decode();
-                let (_pow, signature) = transaction.sign(1, &sk, Cryptography::Sm2p256v1);
+                let (_pow, signature) = transaction.sign(1, &sk, Curve::Sm2p256v1);
                 transaction.sign = signature;
 
                 let result = client.send_raw_tx(transaction).await;
@@ -198,7 +198,7 @@ mod test {
                     .set_code(&code)
                     .build();
                 let sk = HexString::new("0x00a50da54a1987bf5ddd773e9c151bd40aa5d1281b8936dbdec93a9d0a04e4ca").decode();
-                let (_pow, signature) = transaction.sign(1, &sk, Cryptography::Sm2p256v1);
+                let (_pow, signature) = transaction.sign(1, &sk, Curve::Sm2p256v1);
                 transaction.sign = signature;
 
                 let result = client.send_raw_tx(transaction).await;

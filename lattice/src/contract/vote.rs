@@ -89,7 +89,7 @@ impl VoteBuiltinContract {
 #[cfg(test)]
 mod test {
     use model::common::Address;
-    use model::Cryptography;
+    use model::Curve;
 
     use crate::lattice::{ChainConfig, ConnectingNodeConfig, CredentialConfig, LatticeClient};
 
@@ -100,7 +100,7 @@ mod test {
         let owner = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
         let chain_config = ChainConfig {
             chain_id: 1,
-            cryptography: Cryptography::Sm2p256v1,
+            curve: Curve::Sm2p256v1,
         };
         let connecting_node_config = ConnectingNodeConfig {
             ip: String::from("192.168.1.185"),

@@ -1,5 +1,5 @@
 pub use common::HexString;
-pub use enums::Cryptography;
+pub use enums::Curve;
 pub use errors::Error;
 pub use errors::LatticeError;
 

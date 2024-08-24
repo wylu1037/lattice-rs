@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crypto::aes;
 use crypto::hash::hash_message;
 use crypto::sign::KeyPair;
-use model::Cryptography;
+use model::Curve;
 use model::Error;
 use model::HexString;
 
@@ -80,17 +80,17 @@ impl FileKey {
     /// ## Parameters
     /// + `secret_key: &[u8]`: 私钥
     /// + `password: &[u8]`: 身份密码
-    /// + `cryptography: Cryptography`: Secp256k1 or Sm2p256v1
+    /// + `curve: Curve`: Secp256k1 or Sm2p256v1
     ///
     /// ## Returns
     /// + FileKey
-    fn from_secret_key(secret_key: &[u8], password: &[u8], cryptography: Cryptography) -> Self {
-        let key_pair = KeyPair::from_secret_key(secret_key, cryptography);
+    fn from_secret_key(secret_key: &[u8], password: &[u8], curve: Curve) -> Self {
+        let key_pair = KeyPair::from_secret_key(secret_key, curve);
         FileKey {
             uuid: Uuid::new_v4().to_string(),
             address: key_pair.address(),
-            cipher: gen_cipher(secret_key, password, cryptography),
-            is_gm: matches!(cryptography, Cryptography::Sm2p256v1),
+            cipher: gen_cipher(secret_key, password, curve),
+            is_gm: matches!(curve, Curve::Sm2p256v1),
         }
     }
 
@@ -106,8 +106,8 @@ impl FileKey {
         let aes_key = hex::decode(&key[0..32]).unwrap();
 
         let hash_key = hex::decode(&key[32..64]).unwrap();
-        let cryptography = if self.is_gm { Cryptography::Sm2p256v1 } else { Cryptography::Secp256k1 };
-        let actual_mac = compute_mac(&hash_key, &self.cipher.cipher_text, cryptography);
+        let curve = if self.is_gm { Curve::Sm2p256v1 } else { Curve::Secp256k1 };
+        let actual_mac = compute_mac(&hash_key, &self.cipher.cipher_text, curve);
         if !actual_mac.eq(&self.cipher.mac) {
             return Err(Error::new("根据密码无法解析出私钥，请检查密码"));
         }
@@ -116,7 +116,7 @@ impl FileKey {
         let sk_hex = aes::decrypt(&self.cipher.cipher_text, &aes_key, &iv_bytes);
         let secret_bytes = hex::decode(sk_hex).unwrap();
 
-        Ok(KeyPair::from_secret_key(&secret_bytes, cryptography))
+        Ok(KeyPair::from_secret_key(&secret_bytes, curve))
     }
 }
 
@@ -124,11 +124,11 @@ impl FileKey {
 /// ## Parameters
 /// + `secret_key: &[u8]`: 私钥
 /// + `password: &[u8]`: 密码
-/// + `cryptography: Cryptography`:
+/// + `curve: Curve`:
 ///
 /// ## Returns
 /// + `Cipher`: struct
-fn gen_cipher(secret_key: &[u8], password: &[u8], cryptography: Cryptography) -> Cipher {
+fn gen_cipher(secret_key: &[u8], password: &[u8], curve: Curve) -> Cipher {
     let salt = hex::encode(random::<[u8; 32]>());
     let iv_bytes = random::<[u8; 16]>(); // 16 equals aes.BlockSize
     let iv = hex::encode(iv_bytes);
@@ -136,7 +136,7 @@ fn gen_cipher(secret_key: &[u8], password: &[u8], cryptography: Cryptography) ->
     let aes_key = hex::decode(&key[0..32]).unwrap();
     let hash_key = hex::decode(&key[32..64]).unwrap();
     let cipher_text = aes::encrypt(&secret_key, &aes_key, &iv_bytes);
-    let mac = compute_mac(&hash_key, &cipher_text, cryptography);
+    let mac = compute_mac(&hash_key, &cipher_text, curve);
     Cipher {
         aes: Aes {
             cipher: "aes-128-ctr".to_string(),
@@ -178,20 +178,20 @@ fn scrypt_key(password: &[u8], salt: &str) -> String {
 /// ## Parameters
 /// + `key: &[u8]`:
 /// + `cipher_text: &str`:
-/// + `cryptography: Cryptography`:
+/// + `curve: Curve`:
 ///
 /// ## Returns
 /// + String
-fn compute_mac(key: &[u8], cipher_text: &str, cryptography: Cryptography) -> String {
+fn compute_mac(key: &[u8], cipher_text: &str, curve: Curve) -> String {
     let h = HexString { hex_string: String::from(cipher_text) };
     let cipher_bytes = h.decode();
     let data = [key, &cipher_bytes].concat();
-    hash_message(&data, cryptography)
+    hash_message(&data, curve)
 }
 
 #[cfg(test)]
 mod tests {
-    use model::Cryptography;
+    use model::Curve;
     use model::HexString;
 
     use crate::file_key::FileKey;
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn test_gen_file_key() {
         let secret_key = HexString { hex_string: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb") };
-        let file_key = FileKey::from_secret_key(secret_key.decode().as_slice(), b"Root1234", Cryptography::Sm2p256v1);
+        let file_key = FileKey::from_secret_key(secret_key.decode().as_slice(), b"Root1234", Curve::Sm2p256v1);
         match serde_json::to_string(&file_key) {
             Ok(json_string) => println!("{}", json_string),
             Err(e) => eprintln!("{}", e)

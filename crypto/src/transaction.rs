@@ -4,7 +4,7 @@ use num_bigint::BigUint;
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize, Serializer};
 
-use model::{Cryptography, HexString};
+use model::{Curve, HexString};
 use model::common::Address;
 use model::constants::{ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::convert::{number_to_vec, option_number_to_vec};
@@ -164,13 +164,13 @@ impl Transaction {
     /// ## 入参
     /// + `chain_id: u64`: 区块链id
     /// + `pow: String`
-    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    /// + `curve: Curve`: Secp256k or Sm2p256v1
     /// + `use_pow: bool`
     /// + `is_sign: bool`
     ///
     /// ## 出参
     /// + `Vec<u8>`
-    fn rlp_encode(&mut self, chain_id: u64, pow: String, cryptography: Cryptography, use_pow: bool, is_sign: bool) -> Vec<u8> {
+    fn rlp_encode(&mut self, chain_id: u64, pow: String, curve: Curve, use_pow: bool, is_sign: bool) -> Vec<u8> {
         let mut rlp = RlpStream::new();
         rlp.begin_list(15 + if is_sign { 2 } else { 0 });
 
@@ -194,7 +194,7 @@ impl Transaction {
             None => ZERO_HASH_STRING[2..].to_string(),
             Some(v) => {
                 let bytes = HexString::new(v).decode();
-                hash_message(&bytes, cryptography)
+                hash_message(&bytes, curve)
             }
         };
         self.set_code_hash(format!("0x{}", code_hash)); // update transaction code_hash
@@ -234,20 +234,20 @@ impl Transaction {
     /// # 计算pow
     /// ## 入参
     /// + `chain_id: u64`: 区块链id
-    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    /// + `curve: Curve`: Secp256k or Sm2p256v1
     ///
     /// ## 出参
     /// + `BigUint`: pow
     #[allow(dead_code)]
-    fn pow(&mut self, chain_id: u64, cryptography: Cryptography) -> BigUint {
+    fn pow(&mut self, chain_id: u64, curve: Curve) -> BigUint {
         let mut i: u32 = 0;
         let min: BigUint = BigUint::from(1u32).shl(256 - DIFFICULTY);
 
         loop {
             i = i + 1;
             let pow = BigUint::from(i);
-            let rlp = self.rlp_encode(chain_id, hex::encode(&pow.to_bytes_be()), cryptography, true, false);
-            let hash = hash_message(&rlp, cryptography);
+            let rlp = self.rlp_encode(chain_id, hex::encode(&pow.to_bytes_be()), curve, true, false);
+            let hash = hash_message(&rlp, curve);
             let bytes = HexString::new(hash.as_str()).decode();
             let calculated = BigUint::from_bytes_be(&bytes);
             if calculated.le(&min) {
@@ -259,15 +259,15 @@ impl Transaction {
     /// # encode
     /// ## 入参
     /// + `chain_id: u64`: 区块链id
-    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    /// + `curve: Curve`: Secp256k or Sm2p256v1
     ///
     /// ## 出参
     /// + `BigUint`
     /// + `Vec<u8>`
-    fn encode(&mut self, chain_id: u64, cryptography: Cryptography) -> (BigUint, Vec<u8>) {
-        // let pow = self.pow(chain_id, cryptography);
+    fn encode(&mut self, chain_id: u64, curve: Curve) -> (BigUint, Vec<u8>) {
+        // let pow = self.pow(chain_id, curve);
         let pow = BigUint::from_bytes_be(HexString::new("0x00").decode().as_slice());
-        let code = self.rlp_encode(chain_id, hex::encode(&pow.to_bytes_be()), cryptography, false, true);
+        let code = self.rlp_encode(chain_id, hex::encode(&pow.to_bytes_be()), curve, false, true);
         (pow, code)
     }
 
@@ -275,16 +275,16 @@ impl Transaction {
     /// ## 入参
     /// + `chain_id: u64`: 区块链id
     /// + `sk: &[u8]`: 私钥
-    /// + `cryptography: Cryptography`: Secp256k or Sm2p256v1
+    /// + `curve: Curve`: Secp256k or Sm2p256v1
     ///
     /// ## 出参
     /// + `BigUint`: pow
     /// + `String`: signature
-    pub fn sign(&mut self, chain_id: u64, sk: &[u8], cryptography: Cryptography) -> (BigUint, String) {
-        let key_pair = KeyPair::from_secret_key(sk, cryptography);
+    pub fn sign(&mut self, chain_id: u64, sk: &[u8], curve: Curve) -> (BigUint, String) {
+        let key_pair = KeyPair::from_secret_key(sk, curve);
 
-        let (pow, encoded) = self.encode(chain_id, cryptography);
-        let hash = hash_message(&encoded, cryptography);
+        let (pow, encoded) = self.encode(chain_id, curve);
+        let hash = hash_message(&encoded, curve);
         let data = HexString::new(hash.as_str()).decode();
         let signature = key_pair.sign(&data);
         self.sign = signature;

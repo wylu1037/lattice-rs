@@ -3,7 +3,7 @@ use std::any::Any;
 use abi::abi::Abi;
 use crypto::sign::KeyPair;
 use crypto::Transaction;
-use model::{Cryptography, Error, HexString};
+use model::{Curve, Error, HexString};
 use model::block::CurrentTDBlock;
 use model::common::Address;
 use model::constants::ZERO_HASH_STRING;
@@ -16,8 +16,8 @@ use crate::client::HttpClient;
 pub struct ChainConfig {
     /// 区块链ID
     pub chain_id: u64,
-    /// Default Sm2p256v1
-    pub cryptography: Cryptography,
+    /// 椭圆曲线，Default Sm2p256v1
+    pub curve: Curve,
 }
 
 /// 连接节点配置
@@ -101,7 +101,7 @@ pub struct CachedBlock {
     /// 父交易哈希
     parent_hash: String,
     /// 守护区块哈希
-    daemon_hash: String,
+    daemon_block_hash: String,
 }
 
 impl Options {
@@ -150,7 +150,7 @@ impl LatticeClient {
         let address = match credential_config.account_address {
             Some(addr) => addr,
             None => {
-                let key_pair = KeyPair::from_secret_key(&HexString::new(&credential_config.sk).decode(), chain_config.cryptography);
+                let key_pair = KeyPair::from_secret_key(&HexString::new(&credential_config.sk).decode(), chain_config.curve);
                 key_pair.address()
             }
         };
@@ -166,6 +166,13 @@ impl LatticeClient {
         }
     }
 
+    /// # 
+    ///
+    /// ## 入参
+    /// + `contract_address`: 合约地址
+    /// + `abi`
+    ///
+    /// ## 出参
     pub async fn call_contract(&self, contract_address: &str, abi: &str, fn_name: &str, args: Vec<Box<dyn Any>>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
         let block = self.http_client.get_current_tx_daemon_block(&Address::new(&self.get_owner())).await.unwrap();
@@ -182,7 +189,7 @@ impl LatticeClient {
 
         // Sign transaction
         let sk = HexString::new(&self.get_sk()).decode();
-        let (_, signature) = transaction.sign(self.get_chain_id(), &sk, self.chain_config.cryptography);
+        let (_, signature) = transaction.sign(self.get_chain_id(), &sk, self.chain_config.curve);
         transaction.sign = signature;
 
         self.http_client.send_raw_tx(transaction).await
@@ -214,7 +221,7 @@ impl LatticeClient {
         }
 
         let sk = HexString::new(&self.get_sk()).decode();
-        let (_, signature) = tx.sign(self.get_chain_id(), &sk, self.chain_config.cryptography);
+        let (_, signature) = tx.sign(self.get_chain_id(), &sk, self.chain_config.curve);
         tx.sign = signature;
 
         self.http_client.send_raw_tx(tx).await
@@ -230,7 +237,7 @@ mod test {
         let abi_string = r#"[{"inputs":[],"name":"decrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getCount","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"incrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
         let chain_config = ChainConfig {
             chain_id: 1,
-            cryptography: Cryptography::Sm2p256v1,
+            curve: Curve::Sm2p256v1,
         };
         let connecting_node_config = ConnectingNodeConfig {
             ip: String::from("192.168.1.185"),
