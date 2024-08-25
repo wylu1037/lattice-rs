@@ -14,7 +14,7 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
 
 use crypto::Transaction;
-use model::block::{CurrentTDBlock, DBlock};
+use model::block::{DBlock, LatestBlock};
 use model::common::Address;
 use model::Error;
 use model::receipt::Receipt;
@@ -118,7 +118,7 @@ impl HttpClient {
     ///
     /// ## Returns
     /// + `Box<DBlock>`
-    pub async fn get_current_daemon_block(&self) -> Result<DBlock, Error> {
+    pub async fn get_latest_daemon_block(&self) -> Result<DBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentDBlock".to_string(), vec![]);
         let result: Result<DBlock, Error> = self.send_json_rpc_request(&body).await;
         result
@@ -133,9 +133,24 @@ impl HttpClient {
     /// + `Result<CurrentTDBlock, Error>`
     ///   + `Ok(CurrentTDBlock)`
     ///   + `Err(err)`
-    pub async fn get_latest_block(&self, addr: &Address) -> Result<CurrentTDBlock, Error> {
+    pub async fn get_latest_block(&self, addr: &Address) -> Result<LatestBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
-        let result: Result<CurrentTDBlock, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body).await;
+        result
+    }
+
+    /// # 获取当前账户的最新的区块信息，包括pending中的交易
+    ///
+    /// ## 入参
+    /// + `addr: &Address`
+    ///
+    /// ## 出参
+    /// + `Result<CurrentTDBlock, Error>`
+    ///   + `Ok(CurrentTDBlock)`
+    ///   + `Err(err)`
+    pub async fn get_latest_block_with_pending(&self, addr: &Address) -> Result<LatestBlock, Error> {
+        let body = JsonRpcBody::new("latc_getPendingTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
+        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body).await;
         result
     }
 
@@ -315,7 +330,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_current_daemon_block() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_current_daemon_block().await;
+        let response = client.get_latest_daemon_block().await;
         match response {
             Ok(block) => println!("{:?}", block),
             Err(err) => println!("{:?}", err)

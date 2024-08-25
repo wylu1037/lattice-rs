@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crypto::Transaction;
 use crypto::transaction::TxType;
-use model::block::CurrentTDBlock;
+use model::block::LatestBlock;
 
 /// 交易构造
 pub trait TransactionBuilder {
     /// 关联类型：在一个trait内部定义一个占位类型
     fn builder() -> Self;
-    fn set_current_block(self, block: CurrentTDBlock) -> Self;
+    fn set_current_block(self, block: LatestBlock) -> Self;
     fn set_owner(self, owner: &str) -> Self;
     fn set_linker(self, linker: &str) -> Self;
     fn set_code(self, code: &str) -> Self;
@@ -42,7 +42,7 @@ macro_rules! impl_transaction_builder {
             ///
             /// ## 出参
             /// + `Self`
-            fn set_current_block(mut self, block: CurrentTDBlock) -> Self {
+            fn set_current_block(mut self, block: LatestBlock) -> Self {
                 self.transaction.height = block.current_tblock_height + 1;
                 self.transaction.parent_hash = block.current_tblock_hash;
                 self.transaction.daemon_hash = block.current_dblock_hash;

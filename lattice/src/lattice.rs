@@ -4,7 +4,7 @@ use abi::abi::Abi;
 use crypto::sign::KeyPair;
 use crypto::Transaction;
 use model::{Curve, Error, HexString};
-use model::block::CurrentTDBlock;
+use model::block::LatestBlock;
 use model::common::Address;
 use model::constants::ZERO_HASH_STRING;
 use model::receipt::Receipt;
@@ -216,7 +216,7 @@ impl LatticeClient {
     pub async fn pre_call_contract(&self, chain_id: u64, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
         let transaction = CallContractBuilder::builder()
             .set_current_block(
-                CurrentTDBlock {
+                LatestBlock {
                     current_dblock_hash: ZERO_HASH_STRING.to_string(),
                     current_tblock_hash: ZERO_HASH_STRING.to_string(),
                     current_tblock_height: 0,

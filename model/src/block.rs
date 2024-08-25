@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// 最新的账户区块和守护区块信息
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CurrentTDBlock {
+pub struct LatestBlock {
     /// 最新的守护区块
     #[serde(rename = "currentDBlockHash")]
     pub current_dblock_hash: String,
