@@ -185,7 +185,7 @@ impl LatticeClient {
     /// ## 出参
     pub async fn call_contract(&self, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
-        let block = self.http_client.get_current_tx_daemon_block(&Address::new(&self.get_owner())).await.unwrap();
+        let block = self.http_client.get_latest_block(&Address::new(&self.get_owner())).await.unwrap();
 
         let mut transaction = CallContractBuilder::builder()
             .set_current_block(block)

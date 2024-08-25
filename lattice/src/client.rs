@@ -133,7 +133,7 @@ impl HttpClient {
     /// + `Result<CurrentTDBlock, Error>`
     ///   + `Ok(CurrentTDBlock)`
     ///   + `Err(err)`
-    pub async fn get_current_tx_daemon_block(&self, addr: &Address) -> Result<CurrentTDBlock, Error> {
+    pub async fn get_latest_block(&self, addr: &Address) -> Result<CurrentTDBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
         let result: Result<CurrentTDBlock, Error> = self.send_json_rpc_request(&body).await;
         result
@@ -335,7 +335,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_current_tx_daemon_block() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_current_tx_daemon_block(&Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J")).await;
+        let response = client.get_latest_block(&Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J")).await;
         match response {
             Ok(block) => println!("{:?}", block),
             Err(err) => println!("{:?}", err)
