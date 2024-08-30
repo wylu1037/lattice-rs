@@ -1,17 +1,19 @@
 use std::any::Any;
 
+use regex::Regex;
+
 use abi::abi::Abi;
-use crypto::sign::KeyPair;
 use crypto::Transaction;
 use model::{Curve, Error, HexString};
 use model::block::LatestBlock;
 use model::common::Address;
-use model::constants::ZERO_HASH_STRING;
+use model::constants::{PREFIX_OF_HEX, ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::receipt::Receipt;
 use wallet::file_key::FileKey;
 
-use crate::builder::{CallContractBuilder, TransactionBuilder};
+use crate::builder::{CallContractBuilder, DeployContractBuilder, TransactionBuilder};
 use crate::client::HttpClient;
+use crate::constants::REGEX_PRIVATE_KEY;
 
 /// 链配置
 pub struct ChainConfig {
@@ -46,14 +48,43 @@ impl ConnectingNodeConfig {
 
 /// 凭证配置
 pub struct Credentials {
-    /// 账户地址
-    pub account_address: Option<String>,
-    /// 私钥
+    /// 账户地址，示例：zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi
+    pub account_address: String,
+    /// 私钥，示例：0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb
     pub sk: String,
     /// 身份密码，需要和 FileKey 一起使用
     pub passphrase: Option<String>,
     /// file_key
     pub file_key: Option<String>,
+}
+
+impl Credentials {
+    /// # 获取私钥
+    ///
+    /// ## 出参
+    /// + `String`: 示例，0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb
+    fn get_sk(&self) -> String {
+        let regex = Regex::new(REGEX_PRIVATE_KEY).unwrap();
+        if regex.is_match(&self.sk) {
+            return self.sk.clone();
+        } else {
+            let passphrase = self.passphrase.as_ref().expect("身份密码不能为空");
+            let file_key_json = self.file_key.as_ref().expect("FileKey不能为空");
+            let file_key = FileKey::new(file_key_json);
+            let keypair = file_key.decrypt(passphrase).unwrap();
+            let sk_bytes = keypair.secret_key.to_bytes_be();
+            HexString::from(&sk_bytes).hex_string
+        }
+    }
+
+    /// # 从credential中获取账户地址
+    ///
+    /// ## 出参
+    /// + `String`: 账户地址，示例`zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi`
+    fn get_account_address(&self) -> String {
+        let addr = &self.account_address;
+        addr.to_string()
+    }
 }
 
 
@@ -77,9 +108,6 @@ pub struct LatticeClient {
 
     /// 连接节点的配置
     connecting_node_config: ConnectingNodeConfig,
-
-    /// 凭证信息
-    credentials: Credentials,
 
     /// 可选配置
     options: Options,
@@ -119,62 +147,56 @@ impl Options {
 }
 
 impl LatticeClient {
-    /// # 从credential中获取账户地址
-    ///
-    /// ## 入参
-    /// + `&self`:
-    ///
-    /// ## 出参
-    /// + `String`
-    fn get_owner(&self) -> String {
-        let credentials = &self.credentials;
-        let owner = credentials.account_address.as_ref().unwrap();
-        owner.to_string()
-    }
-
-    /// # 从credential中获取私钥
-    ///
-    /// ## 出参
-    /// + `String`: 16进制的私钥
-    fn get_sk(&self) -> String {
-        let credentials = &self.credentials;
-        return if credentials.sk.is_empty() {
-            // decrypt the private key
-            let file_key = credentials.file_key.clone().expect("FileKey不能为空").as_str();
-            let file_key = FileKey::new(file_key);
-            let passphrase = credentials.passphrase.clone().expect("身份密码不能为空").as_str();
-            let result = file_key.decrypt(passphrase);
-            let sk = result.unwrap().secret_key.to_str_radix(16);
-            sk
-        } else {
-            credentials.sk.to_string()
-        };
-    }
-
-    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, mut credentials: Credentials, options: Option<Options>) -> Self {
+    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, options: Option<Options>) -> Self {
         let options: Options = options.unwrap_or_else(|| Options::default());
-        let address = match credentials.account_address {
-            Some(addr) => addr,
-            None => {
-                let key_pair = KeyPair::from_secret_key(&HexString::new(&credentials.sk).decode(), chain_config.curve);
-                key_pair.address()
-            }
-        };
-        credentials.account_address = Some(address);
         let http_client = connecting_node_config.new_http_client();
 
         LatticeClient {
             chain_config,
             connecting_node_config,
-            credentials,
             options,
             http_client,
         }
     }
 
+    /// # 部署合约
+    ///
+    /// ## 入参
+    /// + `credentials: Credentials`:
+    /// + `chain_id: u64`:
+    /// + `code: &str`:
+    /// + `amount: Option<u128>`:
+    /// + `joule: Option<u128>`:
+    /// + `payload: Option<&str>`:
+    ///
+    /// ## 出参
+    /// + `Result<String, Error>`
+    pub async fn deploy_contract(&self, credentials: Credentials, chain_id: u64, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
+        // Get latest block
+        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
+
+        let mut transaction = DeployContractBuilder::builder()
+            .set_current_block(block)
+            .set_owner(credentials.account_address.as_str())
+            .set_linker(ZERO_ZLTC_ADDRESS)
+            .set_code(code)
+            .set_payload(payload.unwrap_or(PREFIX_OF_HEX))
+            .set_amount(amount)
+            .set_joule(joule)
+            .build();
+
+        // Sign transaction
+        let sk = HexString::new(credentials.get_sk().as_str()).decode();
+        let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
+        transaction.sign = signature;
+
+        self.http_client.send_raw_tx(chain_id, transaction).await
+    }
+
     /// # 调用合约
     ///
     /// ## 入参
+    /// + `credentials: Credentials`: 上链的凭证
     /// + `chain_id: u64`: 链ID
     /// + `contract_address: &str`: 合约地址
     /// + `code: &str`:
@@ -183,24 +205,27 @@ impl LatticeClient {
     /// + `payload: Option<&str>`
     ///
     /// ## 出参
-    pub async fn call_contract(&self, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
+    /// + `Result<String, Error>`
+    pub async fn call_contract(&self, credentials: Credentials, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
-        let block = self.http_client.get_latest_block(&Address::new(&self.get_owner())).await.unwrap();
+        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
 
         let mut transaction = CallContractBuilder::builder()
             .set_current_block(block)
-            .set_owner(&self.get_owner())
+            .set_owner(credentials.account_address.as_str())
             .set_linker(contract_address)
             .set_code(code)
-            .set_payload(payload.unwrap_or("0x"))
+            .set_payload(payload.unwrap_or(PREFIX_OF_HEX))
+            .set_amount(amount)
+            .set_joule(joule)
             .build();
 
         // Sign transaction
-        let sk = HexString::new(&self.get_sk()).decode();
+        let sk = HexString::new(credentials.get_sk().as_str()).decode();
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
-        self.http_client.send_raw_tx(transaction).await
+        self.http_client.send_raw_tx(chain_id, transaction).await
     }
 
     /// # 预调用合约（不会上链）
@@ -213,7 +238,7 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<Receipt, Error>`
-    pub async fn pre_call_contract(&self, chain_id: u64, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
+    pub async fn pre_call_contract(&self, chain_id: u64, owner: &str, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
         let transaction = CallContractBuilder::builder()
             .set_current_block(
                 LatestBlock {
@@ -221,25 +246,29 @@ impl LatticeClient {
                     current_tblock_hash: ZERO_HASH_STRING.to_string(),
                     current_tblock_height: 0,
                 })
-            .set_owner(&self.get_owner())
+            .set_owner(owner)
             .set_linker(contract_address)
             .set_code(code)
             .set_payload(payload.unwrap_or("0x"))
             .build();
 
-        self.http_client.pre_call_contract(transaction).await
+        self.http_client.pre_call_contract(chain_id, transaction).await
     }
 
-    pub async fn sign_and_send_tx(self, chain_id: u64, mut tx: Transaction) -> Result<String, Error> {
-        if tx.owner.is_empty() {
-            tx.owner = self.get_owner();
-        }
-
-        let sk = HexString::new(&self.get_sk()).decode();
+    /// # 签名交易并发送交易
+    ///
+    /// ## 入参
+    /// + `chain_id: u64`: 链ID
+    /// + `tx: Transaction`: 交易
+    ///
+    /// ## 出参
+    /// + `Result<String, Error>`
+    pub async fn sign_and_send_tx(self, credentials: Credentials, chain_id: u64, mut tx: Transaction) -> Result<String, Error> {
+        let sk = HexString::new(&credentials.get_sk()).decode();
         let (_, signature) = tx.sign(chain_id, &sk, self.chain_config.curve);
         tx.sign = signature;
 
-        self.http_client.send_raw_tx(tx).await
+        self.http_client.send_raw_tx(chain_id, tx).await
     }
 }
 
@@ -247,9 +276,40 @@ impl LatticeClient {
 mod test {
     use super::*;
 
+    const COUNTER_ABI: &str = r#"[
+        {
+            "inputs": [],
+            "name": "decrementCounter",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getCount",
+            "outputs": [
+                {
+                    "internalType": "int256",
+                    "name": "",
+                    "type": "int256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "incrementCounter",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ]"#;
+
+    const COUNTER_BYTECODE: &str = "0x60806040526000805534801561001457600080fd5b50610278806100246000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c80635b34b96614610046578063a87d942c14610050578063f5c5ad831461006e575b600080fd5b61004e610078565b005b610058610093565b60405161006591906100d0565b60405180910390f35b61007661009c565b005b600160008082825461008a919061011a565b92505081905550565b60008054905090565b60016000808282546100ae91906101ae565b92505081905550565b6000819050919050565b6100ca816100b7565b82525050565b60006020820190506100e560008301846100c1565b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b6000610125826100b7565b9150610130836100b7565b9250817f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0383136000831215161561016b5761016a6100eb565b5b817f80000000000000000000000000000000000000000000000000000000000000000383126000831216156101a3576101a26100eb565b5b828201905092915050565b60006101b9826100b7565b91506101c4836100b7565b9250827f8000000000000000000000000000000000000000000000000000000000000000018212600084121516156101ff576101fe6100eb565b5b827f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff018213600084121615610237576102366100eb565b5b82820390509291505056fea2646970667358221220d841351625356129f6266ada896818d690dbc4b0d176774a97d745dfbe2fe50164736f6c634300080b0033";
+
     #[tokio::test]
-    async fn test_pre_call_contract() {
-        let abi_string = r#"[{"inputs":[],"name":"decrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getCount","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"incrementCounter","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
+    async fn test_deploy_counter_contract() {
         let chain_config = ChainConfig {
             curve: Curve::Sm2p256v1,
             token_less: true,
@@ -261,16 +321,56 @@ mod test {
         };
         let credentials = Credentials {
             sk: String::from("0xdbd91293f324e5e49f040188720c6c9ae7e6cc2b4c5274120ee25808e8f4b6a7"),
-            account_address: Some(String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s")),
+            account_address: String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s"),
             passphrase: None,
             file_key: None,
         };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, credentials, None);
-        let abi = Abi::new(abi_string);
-        let code = abi.encode("getCount", vec![]);
-        let _result = lattice.pre_call_contract(2, "zltc_d1pTRCCH2F6McFCmXYCB743L7spuNtw31", &code, None).await;
-        if let Ok(hash) = _result {
-            println!("{:?}", hash)
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, None);
+        let deploy_result = lattice.deploy_contract(credentials, 2, COUNTER_BYTECODE, None, None, None).await;
+        match deploy_result {
+            Ok(hash) => { println!("部署合约的交易哈希：{}", hash); }
+            Err(e) => { println!("部署合约错误，{}", e); }
         }
+    }
+
+    #[tokio::test]
+    async fn test_pre_call_contract() {
+        let chain_config = ChainConfig {
+            curve: Curve::Sm2p256v1,
+            token_less: true,
+        };
+        let connecting_node_config = ConnectingNodeConfig {
+            ip: String::from("192.168.1.185"),
+            http_port: 13800,
+            websocket_port: 13001,
+        };
+        let credentials = Credentials {
+            sk: String::from("0xdbd91293f324e5e49f040188720c6c9ae7e6cc2b4c5274120ee25808e8f4b6a7"),
+            account_address: String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s"),
+            passphrase: None,
+            file_key: None,
+        };
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, None);
+        let abi = Abi::new(COUNTER_ABI);
+        let code = abi.encode("getCount", vec![]);
+        let _result = lattice.pre_call_contract(2, "zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s", "zltc_Yw1XgbrmeEdJcQJcofN48XD5vxwST4uiy", &code, None).await;
+        match _result {
+            Ok(receipt) => { println!("预调用合约，{:?}", serde_json::to_string(&receipt)) }
+            Err(e) => { println!("预调用合约错误，{}", e) }
+        }
+    }
+
+    #[test]
+    fn test_decrypt_file_key_from_credentials() {
+        let file_key = r#"{"uuid":"123f1bf5-5599-45c4-8566-9a6440ba359f","address":"zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi","cipher":{"aes":{"cipher":"aes-128-ctr","cipherText":"8f6de52c0be43ae438feddea4c210772da23b9333242b7416446eae889b594e0","iv":"1ad693b4d8089da0492b9c8c49bc60d3"},"kdf":{"kdf":"scrypt","kdfParams":{"DKLen":32,"n":262144,"p":1,"r":8,"salt":"309210a97fbf705eed7bf3485c16d6922a21591297b52c0c59b4f7495863e300"}},"cipherText":"8f6de52c0be43ae438feddea4c210772da23b9333242b7416446eae889b594e0","mac":"335fab3901f8f5c4408b7d6a310ec29cf5bd3792deb696f1b10282e823241c96"},"isGM":true}"#;
+        let credentials = Credentials {
+            account_address: String::from(""),
+            sk: String::from(""),
+            passphrase: Some(String::from("Root1234")),
+            file_key: Some(file_key.to_string()),
+        };
+        let sk = credentials.get_sk();
+        let expect = "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb".to_string();
+        assert_eq!(expect, sk)
     }
 }

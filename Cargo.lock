@@ -1227,6 +1227,7 @@ dependencies = [
  "crypto",
  "futures-util",
  "model",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

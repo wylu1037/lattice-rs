@@ -1,10 +1,13 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::Hash;
+use std::str::FromStr;
 
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink, SplitStream};
 use reqwest::{Client, Url};
-use reqwest::header::CONTENT_TYPE;
+use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::net::TcpStream;
@@ -24,7 +27,7 @@ use crate::constants::JSON_RPC;
 /// 定义一个异步的客户端trait
 #[async_trait]
 pub trait HttpRequest {
-    async fn send(&self, message: &str) -> Result<String, Error>;
+    async fn send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error>;
 }
 
 /// Json-Rpc请求体
@@ -98,12 +101,39 @@ impl HttpClient {
         }
     }
 
-    async fn send_json_rpc_request<T>(&self, body: &JsonRpcBody) -> Result<T, Error>
+    /// # 创建http的请求头
+    ///
+    /// ## 入参
+    /// + `chai_id: u64`: 链ID，为0时不设置ChainID的请求头
+    ///
+    /// ## 出参
+    /// + `HashMap<String, String>`
+    fn new_headers(chain_id: u64) -> HashMap<String, String> {
+        let mut chain_id_as_string = String::new();
+        if chain_id > 0 {
+            chain_id_as_string = chain_id.to_string();
+        }
+        let headers = HashMap::from([
+            (CONTENT_TYPE.to_string(), String::from("application/json")),
+            (String::from("ChainID"), chain_id_as_string)
+        ]);
+        headers
+    }
+
+    /// # 发送json-rpc请求
+    ///
+    /// ## 入参
+    /// + `body: &JsonRpcBody`: 请求体
+    /// + `headers: HashMap<String, String>`: 请求头
+    ///
+    /// ## 出参
+    /// + `Result<T, Error>`
+    async fn send_json_rpc_request<T>(&self, body: &JsonRpcBody, headers: HashMap<String, String>) -> Result<T, Error>
         where
             T: for<'a> Deserialize<'a>
     {
         let message = serde_json::to_string(&body)?;
-        let response = self.send(message.as_str()).await?;
+        let response = self.send(message.as_str(), headers).await?;
         let response: Response<T> = serde_json::from_str(&response)?;
         let err_option = response.error;
         if let Some(err) = err_option {
@@ -115,42 +145,45 @@ impl HttpClient {
     /// # 查询最新的守护区块信息
     ///
     /// ## Parameters
+    /// + `chain_id: u64`: 链ID
     ///
     /// ## Returns
     /// + `Box<DBlock>`
-    pub async fn get_latest_daemon_block(&self) -> Result<DBlock, Error> {
+    pub async fn get_latest_daemon_block(&self, chain_id: u64) -> Result<DBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentDBlock".to_string(), vec![]);
-        let result: Result<DBlock, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<DBlock, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id)).await;
         result
     }
 
     /// # 查询最新的区块（包括账户和守护区块的信息）
     ///
     /// ## 入参
-    /// + `addr: &Address`
+    /// + `chain_id: u64`: 链ID
+    /// + `addr: &Address`: 账户地址
     ///
     /// ## 出参
     /// + `Result<CurrentTDBlock, Error>`
     ///   + `Ok(CurrentTDBlock)`
     ///   + `Err(err)`
-    pub async fn get_latest_block(&self, addr: &Address) -> Result<LatestBlock, Error> {
+    pub async fn get_latest_block(&self, chain_id: u64, addr: &Address) -> Result<LatestBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
-        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id)).await;
         result
     }
 
     /// # 获取当前账户的最新的区块信息，包括pending中的交易
     ///
     /// ## 入参
+    /// + `chain_id: u64`
     /// + `addr: &Address`
     ///
     /// ## 出参
     /// + `Result<CurrentTDBlock, Error>`
     ///   + `Ok(CurrentTDBlock)`
     ///   + `Err(err)`
-    pub async fn get_latest_block_with_pending(&self, addr: &Address) -> Result<LatestBlock, Error> {
+    pub async fn get_latest_block_with_pending(&self, chain_id: u64, addr: &Address) -> Result<LatestBlock, Error> {
         let body = JsonRpcBody::new("latc_getPendingTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
-        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id)).await;
         result
     }
 
@@ -158,15 +191,16 @@ impl HttpClient {
     ///
     /// ## 入参
     /// + `&self`:
+    /// + `chain_id: u64`: 链ID
     /// + `signed_tx`: 已签名的交易
     ///
     /// ## 出参
     /// + `Result<String, Error>`
     ///   + `Ok(String)`
     ///   + `Err(err)`
-    pub async fn send_raw_tx(&self, signed_tx: Transaction) -> Result<String, Error> {
+    pub async fn send_raw_tx(&self, chain_id: u64, signed_tx: Transaction) -> Result<String, Error> {
         let body = JsonRpcBody::new("wallet_sendRawTBlock".to_string(), vec![json!(signed_tx.to_raw_tx())]);
-        let result: Result<String, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<String, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id)).await;
         result
     }
 
@@ -174,38 +208,50 @@ impl HttpClient {
     ///
     /// ## 入参
     /// + `&self`:
+    /// + `chain_id: u64`: 链ID
     /// + `unsigned_tx`: 未签名的交易
     ///
     /// ## 出参
     /// + `Result<Receipt, Error>`
     ///   + `Ok(Receipt)`
     ///   + `Err(err)`
-    pub async fn pre_call_contract(&self, unsigned_tx: Transaction) -> Result<Receipt, Error> {
+    pub async fn pre_call_contract(&self, chain_id: u64, unsigned_tx: Transaction) -> Result<Receipt, Error> {
         let body = JsonRpcBody::new("wallet_preExecuteContract".to_string(), vec![json!(unsigned_tx.to_raw_tx())]);
-        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id)).await;
         result
     }
 
     /// # 查询交易回执
     ///
     /// ## Parameters
+    /// + `chain_id: u64`: 链ID
     /// + `hash: &str`: 交易哈希，示例：`0xe8df1f1e250cd0eac75eee3f8733e26e9422ef5ea88650ab54498cd8e4928144`
     ///
     /// ## Returns
     /// + `Box<Receipt>`
-    pub async fn get_receipt(&self, hash: &str) -> Result<Receipt, Error> {
+    pub async fn get_receipt(&self, chain_id: u64, hash: &str) -> Result<Receipt, Error> {
         let body = JsonRpcBody::new("latc_getReceipt".to_string(), vec![json!(hash)]);
-        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body).await;
+        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id)).await;
         result
     }
 }
 
 #[async_trait]
 impl HttpRequest for HttpClient {
-    async fn send(&self, message: &str) -> Result<String, Error> {
+    async fn send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error> {
+        let mut header_map = HeaderMap::new();
+        header_map.insert(
+            HeaderName::from_str(CONTENT_TYPE.as_str()).unwrap(),
+            HeaderValue::from_str("application/json").unwrap(),
+        );
+        for (k, v) in headers {
+            let key = HeaderName::from_str(&k).unwrap();
+            let value = HeaderValue::from_str(&v).unwrap();
+            header_map.insert(key, value);
+        }
         let res = self.client.post(&self.url)
             .body(message.to_string())
-            .header(CONTENT_TYPE, "application/json")
+            .headers(header_map)
             .send()
             .await?
             .text()
@@ -327,10 +373,12 @@ mod tests {
 
     use crate::client::{HttpClient, JsonRpcBody, WsClient, WsRequest};
 
+    const CHAIN_ID: u64 = 1;
+
     #[tokio::test]
     async fn test_get_current_daemon_block() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_latest_daemon_block().await;
+        let response = client.get_latest_daemon_block(CHAIN_ID).await;
         match response {
             Ok(block) => println!("{:?}", block),
             Err(err) => println!("{:?}", err)
@@ -340,7 +388,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_receipt() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_receipt("0x616bf03baa685df9fddeff4701f170b30176e54120df726142a534f8f2b51873").await;
+        let response = client.get_receipt(CHAIN_ID, "0x616bf03baa685df9fddeff4701f170b30176e54120df726142a534f8f2b51873").await;
         match response {
             Ok(receipt) => println!("{:?}", receipt),
             Err(err) => println!("{:?}", err.to_string())
@@ -350,7 +398,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_current_tx_daemon_block() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_latest_block(&Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J")).await;
+        let response = client.get_latest_block(CHAIN_ID, &Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J")).await;
         match response {
             Ok(block) => println!("{:?}", block),
             Err(err) => println!("{:?}", err)

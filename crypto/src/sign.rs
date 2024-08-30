@@ -262,4 +262,13 @@ mod tests {
         let pass = key_pair.verify(&message, &signature);
         assert_eq!(pass, true)
     }
+
+    #[test]
+    fn recovery_keypair() {
+        let sk = HexString::new("0x72ffdd7245e0ad7cffd533ad99f54048bf3fa6358e071fba8c2d7783d992d997").decode();
+        let keypair = KeyPair::from_secret_key(&sk, Curve::Sm2p256v1);
+        println!("{}", hex::encode(keypair.public_key.clone()));
+        let address = public_key_to_address(keypair.public_key.as_slice(), Curve::Sm2p256v1);
+        print!("{:?}", address);
+    }
 }

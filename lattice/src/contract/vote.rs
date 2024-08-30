@@ -95,6 +95,8 @@ mod test {
 
     use super::*;
 
+    const CHAIN_ID: u64 = 1;
+
     #[tokio::test]
     async fn test_new_vote_tx() {
         let owner = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
@@ -109,12 +111,12 @@ mod test {
         };
         let credentials = Credentials {
             sk: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb"),
-            account_address: Some(String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi")),
+            account_address: String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi"),
             passphrase: None,
             file_key: None,
         };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, credentials, None);
-        let block = lattice.http_client.get_latest_block(&Address::new(owner)).await.unwrap();
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, None);
+        let block = lattice.http_client.get_latest_block(CHAIN_ID, &Address::new(owner)).await.unwrap();
 
         let mut tx = VoteBuiltinContract::new().new_vote_tx("0x012629af43a2e7cf024cdaeb8c108078b3b62a9f171300000000000000", true);
 
@@ -122,7 +124,7 @@ mod test {
         tx.parent_hash = block.current_tblock_hash;
         tx.daemon_hash = block.current_dblock_hash;
 
-        let res = lattice.sign_and_send_tx(2, tx).await;
+        let res = lattice.sign_and_send_tx(credentials, 2, tx).await;
         match res {
             Err(err) => println!("Err {}", err),
             Ok(v) => println!("Hash {}", v)
