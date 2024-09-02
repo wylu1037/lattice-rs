@@ -40,7 +40,7 @@ pub trait AccountCacheTrait {
 }
 
 /// 账户缓存的默认实现
-struct DefaultAccountCache {
+pub struct DefaultAccountCache {
     /// 是否启用缓存
     enable: bool,
     /// 持有一个内存缓存的管理器
@@ -54,7 +54,7 @@ struct DefaultAccountCache {
 }
 
 impl DefaultAccountCache {
-    fn new(enable: bool, daemon_hash_expiration_duration: Duration, http_client: HttpClient) -> Self {
+    pub fn new(enable: bool, daemon_hash_expiration_duration: Duration, http_client: HttpClient) -> Self {
         let cache = Cache::builder()
             // .time_to_live(Duration::from_secs(30 * 60)) // 固定时长后过期，每次访问不会续期
             .time_to_idle(Duration::from_secs(5 * 60))

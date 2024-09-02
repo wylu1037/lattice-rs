@@ -27,7 +27,25 @@ use crate::constants::JSON_RPC;
 /// 定义一个异步的客户端trait
 #[async_trait]
 pub trait HttpRequest {
+    /// # 发送Http请求
+    ///
+    /// ## 入参
+    /// + message: &str
+    /// + headers: HashMap<String, String>
+    ///
+    /// ## 出参
+    /// + `Result<String, Error>`
     async fn send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error>;
+
+    /// # 同步发送请求
+    ///
+    /// ## 入参
+    /// + message: &str
+    /// + headers: HashMap<String, String>
+    ///
+    /// ## 出参
+    /// + `Result<String, Error>`
+    fn sync_send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error>;
 }
 
 /// Json-Rpc请求体
@@ -84,6 +102,7 @@ struct JsonRpcError {
 }
 
 /// HTTP客户端
+#[derive(Debug, Clone)]
 pub struct HttpClient {
     client: Client,
     pub ip: String,
@@ -99,6 +118,26 @@ impl HttpClient {
             port,
             url: format!("http://{}:{}", ip, port),
         }
+    }
+
+    // 提取公共逻辑的方法
+    fn build_request(&self, message: &str, headers: HashMap<String, String>) -> Result<reqwest::RequestBuilder, Error> {
+        let mut header_map = HeaderMap::new();
+        header_map.insert(
+            HeaderName::from_str(CONTENT_TYPE.as_str()).unwrap(),
+            HeaderValue::from_str("application/json").unwrap(),
+        );
+        for (k, v) in headers {
+            let key = HeaderName::from_str(&k).unwrap();
+            let value = HeaderValue::from_str(&v).unwrap();
+            header_map.insert(key, value);
+        }
+
+        let request_builder = self.client.post(&self.url)
+            .body(message.to_string())
+            .headers(header_map);
+
+        Ok(request_builder)
     }
 
     /// # 创建http的请求头
@@ -239,23 +278,15 @@ impl HttpClient {
 #[async_trait]
 impl HttpRequest for HttpClient {
     async fn send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error> {
-        let mut header_map = HeaderMap::new();
-        header_map.insert(
-            HeaderName::from_str(CONTENT_TYPE.as_str()).unwrap(),
-            HeaderValue::from_str("application/json").unwrap(),
-        );
-        for (k, v) in headers {
-            let key = HeaderName::from_str(&k).unwrap();
-            let value = HeaderValue::from_str(&v).unwrap();
-            header_map.insert(key, value);
-        }
-        let res = self.client.post(&self.url)
-            .body(message.to_string())
-            .headers(header_map)
-            .send()
-            .await?
-            .text()
-            .await?;
+        let request_builder = self.build_request(message, headers)?;
+        let res = request_builder.send().await?.text().await?;
+        Ok(res)
+    }
+
+    fn sync_send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error> {
+        let request_builder = self.build_request(message, headers)?;
+        let res = request_builder.send();
+
         Ok(res)
     }
 }

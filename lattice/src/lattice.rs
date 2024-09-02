@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::time::Duration;
 
 use regex::Regex;
 
@@ -11,6 +12,8 @@ use model::constants::{PREFIX_OF_HEX, ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::receipt::Receipt;
 use wallet::file_key::FileKey;
 
+use crate::account_cache::{AccountCacheTrait, DefaultAccountCache};
+use crate::account_lock::{AccountLockTrait, DefaultAccountLock};
 use crate::builder::{CallContractBuilder, DeployContractBuilder, TransactionBuilder, TransferBuilder};
 use crate::client::HttpClient;
 use crate::constants::REGEX_PRIVATE_KEY;
@@ -116,6 +119,12 @@ pub struct LatticeClient {
 
     /// 节点的http client
     pub http_client: HttpClient,
+
+    /// 账户锁
+    account_lock: Box<dyn AccountLockTrait>,
+
+    /// 账户缓存
+    account_cache: Box<dyn AccountCacheTrait>,
 }
 
 /// 可选项
@@ -149,15 +158,19 @@ impl Options {
 }
 
 impl LatticeClient {
-    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, options: Option<Options>) -> Self {
+    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, options: Option<Options>, account_lock: Option<Box<dyn AccountLockTrait>>, account_cache: Option<Box<dyn AccountCacheTrait>>) -> Self {
         let options: Options = options.unwrap_or_else(|| Options::default());
         let http_client = connecting_node_config.new_http_client();
+        let account_lock = account_lock.unwrap_or_else(|| Box::new(DefaultAccountLock::new()));
+        let account_cache = account_cache.unwrap_or_else(|| Box::new(DefaultAccountCache::new(true, Duration::from_secs(10), http_client.clone())));
 
         LatticeClient {
             chain_config,
             connecting_node_config,
             options,
             http_client,
+            account_lock,
+            account_cache,
         }
     }
 
@@ -173,10 +186,14 @@ impl LatticeClient {
     /// ## 出参
     /// + `Result<String, Error>`
     pub async fn transfer(&self, credentials: Credentials, chain_id: u64, payload: &str, amount: Option<u128>, joule: Option<u128>) -> Result<String, Error> {
-        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
+        let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
+        let _guard = account_lock.lock().unwrap();
+
+        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str()).await;
+        // let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
 
         let mut transaction = TransferBuilder::builder()
-            .set_current_block(block)
+            .set_current_block(block.clone())
             .set_owner(credentials.account_address.as_str())
             .set_linker(ZERO_ZLTC_ADDRESS)
             .set_payload(payload)
@@ -189,7 +206,18 @@ impl LatticeClient {
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
-        self.http_client.send_raw_tx(chain_id, transaction).await
+        let result = self.http_client.send_raw_tx(chain_id, transaction).await;
+
+        match result {
+            Ok(hash) => {
+                block.hash = hash.clone();
+                block.height = block.height + 1;
+                self.account_cache.set(chain_id, credentials.account_address.as_str(), block);
+
+                Ok(hash)
+            }
+            Err(e) => Err(e)
+        }
     }
 
     /// # 部署合约
@@ -357,7 +385,7 @@ mod test {
             };
             let connecting_node_config = ConnectingNodeConfig {
                 ip: String::from("192.168.1.185"),
-                http_port: 13800,
+                http_port: 13000,
                 websocket_port: 13001,
             };
             let credentials = Credentials {
@@ -366,7 +394,7 @@ mod test {
                 passphrase: None,
                 file_key: None,
             };
-            let lattice = LatticeClient::new(chain_config.clone(), connecting_node_config.clone(), None);
+            let lattice = LatticeClient::new(chain_config.clone(), connecting_node_config.clone(), None, None, None);
             // 浅浅青末云顶款
             Setup {
                 chain_config,
@@ -404,7 +432,7 @@ mod test {
             passphrase: None,
             file_key: None,
         };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, None);
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, None, None, None);
         let deploy_result = lattice.deploy_contract(credentials, 2, COUNTER_BYTECODE, None, None, None).await;
         match deploy_result {
             Ok(hash) => { println!("部署合约的交易哈希：{}", hash); }
@@ -429,7 +457,7 @@ mod test {
             passphrase: None,
             file_key: None,
         };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, None);
+        let lattice = LatticeClient::new(chain_config, connecting_node_config, None, None, None);
         let abi = Abi::new(COUNTER_ABI);
         let code = abi.encode("getCount", vec![]);
         let _result = lattice.pre_call_contract(2, "zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s", "zltc_Yw1XgbrmeEdJcQJcofN48XD5vxwST4uiy", &code, None).await;

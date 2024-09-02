@@ -31,7 +31,7 @@ pub trait AccountLockTrait {
     fn release(&self, chain_id: u64, account_address: &str);
 }
 
-struct DefaultAccountLock {
+pub struct DefaultAccountLock {
     /// 设计思路：
     /// + `RwLock` 允许并发读和独占写操作，通过write方法阻塞其它线程，保证对HashMap的操作是并发安全的
     /// + `Arc`（原子引用计数，Atomic Reference Counted）允许多个线程安全地共享同一个数据。通过`Arc::clone()`在多个线程间共享锁的所有权。
@@ -42,7 +42,7 @@ struct DefaultAccountLock {
 }
 
 impl DefaultAccountLock {
-    fn new() -> Self {
+    pub fn new() -> Self {
         DefaultAccountLock {
             locks: RwLock::new(HashMap::new())
         }
