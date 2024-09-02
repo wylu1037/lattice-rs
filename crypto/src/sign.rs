@@ -96,7 +96,7 @@ impl KeyPair {
                     "0x{}{}{}",
                     hex::encode(r),
                     hex::encode(s),
-                    BigUint::from(recovery_id).to_str_radix(16),
+                    hex::encode(BigUint::from(recovery_id).to_bytes_be()),
                 )
             }
             Curve::Sm2p256v1 => {
@@ -104,10 +104,17 @@ impl KeyPair {
                 // Get the value "e", which is the hash of message and ID, EC parameters and public key
                 let digest = CONTEXT_SM2P256V1.hash("1234567812345678", &pk, message).unwrap();
                 let sig = CONTEXT_SM2P256V1.sign_raw(&digest[..], &self.secret_key).unwrap();
+                let r_bytes = sig.get_r().to_bytes_be();
+                let s_bytes = sig.get_s().to_bytes_be();
+                let mut r_padded = vec![0u8; 32 - r_bytes.len()];
+                r_padded.extend_from_slice(&r_bytes);
+                let mut s_padded = vec![0u8; 32 - s_bytes.len()];
+                s_padded.extend_from_slice(&s_bytes);
+
                 format!(
                     "0x{}{}01{}",
-                    sig.get_r().to_str_radix(16),
-                    sig.get_s().to_str_radix(16),
+                    hex::encode(r_padded),
+                    hex::encode(s_padded),
                     hex::encode(digest),
                 )
             }
@@ -173,7 +180,7 @@ mod tests {
         let keypair_secp256k1 = KeyPair::new_keypair(Curve::Secp256k1);
 
         assert_eq!(keypair_sm2p256v1.public_key.len(), 65);
-        assert_eq!(keypair_sm2p256v1.secret_key.to_str_radix(16).len(), 64);
+        assert_eq!(hex::encode(keypair_sm2p256v1.secret_key.to_bytes_be()).len(), 64);
         assert_eq!(keypair_secp256k1.public_key.len(), 65);
         assert_eq!(keypair_secp256k1.secret_key.to_bytes_be().len(), 32)
     }

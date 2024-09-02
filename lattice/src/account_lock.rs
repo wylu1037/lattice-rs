@@ -62,7 +62,6 @@ impl AccountLockTrait for DefaultAccountLock {
     }
 
     fn dec_ref(&self, chain_id: u64, account_address: &str) {
-        println!("开始释放资源");
         let key = format!("{}_{}", chain_id, account_address);
         let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
 
@@ -71,14 +70,12 @@ impl AccountLockTrait for DefaultAccountLock {
             if *count > 1 {
                 *count -= 1;
             } else {
-                println!("删除Mutex的缓存");
                 locks.remove(&key);
             }
         } // RwLockWriteGuard<HashMap<...>> 离开作用域，自动释放锁
     }
 
     fn release(&self, chain_id: u64, account_address: &str) {
-        println!("释放账户的全部资源");
         let key = format!("{}_{}", chain_id, account_address);
         let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
 

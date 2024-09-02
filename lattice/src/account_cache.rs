@@ -98,7 +98,6 @@ impl AccountCacheTrait for DefaultAccountCache {
         let mut cached_block: LatestBlock;
         match cached_block_option {
             Some(block) => {
-                println!("从缓存中获取区块信息.{}", block.height);
                 cached_block = block
             }
             None => {
@@ -112,7 +111,6 @@ impl AccountCacheTrait for DefaultAccountCache {
         if map.contains_key(&chain_id) {
             let daemon_hash_expire_at = map.get(&chain_id).unwrap();
             if SystemTime::now() > *daemon_hash_expire_at {
-                println!("守护区块哈希已过期，开始更新守护区块哈希，chainId: {}, account_address: {}", chain_id, account_address);
                 let latest_daemon_block = self.http_client.get_latest_daemon_block(chain_id).unwrap();
                 let daemon_hash_expire_at = SystemTime::now().add(self.daemon_hash_expiration_duration);
                 map.insert(chain_id, daemon_hash_expire_at);

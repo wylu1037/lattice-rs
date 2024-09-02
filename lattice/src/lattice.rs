@@ -210,7 +210,6 @@ impl LatticeClient {
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
-        println!("发送的交易为：{:?}", transaction);
         let result = self.http_client.send_raw_tx(chain_id, transaction);
 
         match result {
@@ -416,7 +415,7 @@ mod test {
         let setup = Setup::new();
         let mut handles = vec![];
         let lattice = Arc::new(setup.lattice);
-        for i in 0..20 {
+        for i in 0..86 {
             let lattice = Arc::clone(&lattice);
             let credential = setup.credentials.clone();
             let handle = thread::spawn(move || {
