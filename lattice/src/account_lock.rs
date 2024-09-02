@@ -5,7 +5,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 /// 定义账户锁的trait
-pub trait AccountLockTrait {
+pub trait AccountLockTrait: Sync + Send {
     /// # 获取账户锁
     ///
     /// ## 入参

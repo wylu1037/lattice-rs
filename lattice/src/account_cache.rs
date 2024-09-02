@@ -11,7 +11,7 @@ use model::common::Address;
 use crate::client::HttpClient;
 
 /// 账户缓存的实现
-pub trait AccountCacheTrait {
+pub trait AccountCacheTrait: Sync + Send {
     /// # 设置账户的区块缓存
     ///
     /// ## 入参
@@ -97,7 +97,10 @@ impl AccountCacheTrait for DefaultAccountCache {
         let cached_block_option = self.cache.get(&key);
         let mut cached_block: LatestBlock;
         match cached_block_option {
-            Some(block) => { cached_block = block }
+            Some(block) => {
+                println!("从缓存中获取区块信息.{}", block.height);
+                cached_block = block
+            }
             None => {
                 let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address));
                 cached_block = result.unwrap();

@@ -87,7 +87,7 @@ pub struct Response<T> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct JsonRpcError {
-    code: u16,
+    code: i16,
     message: String,
 }
 

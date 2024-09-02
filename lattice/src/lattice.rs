@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::sync::Arc;
 use std::time::Duration;
 
 use regex::Regex;
@@ -52,6 +53,7 @@ impl ConnectingNodeConfig {
 }
 
 /// 凭证配置
+#[derive(Debug, Clone)]
 pub struct Credentials {
     /// 账户地址，示例：zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi
     pub account_address: String,
@@ -121,10 +123,10 @@ pub struct LatticeClient {
     pub http_client: HttpClient,
 
     /// 账户锁
-    account_lock: Box<dyn AccountLockTrait>,
+    account_lock: Arc<dyn AccountLockTrait + Sync + Send>,
 
     /// 账户缓存
-    account_cache: Box<dyn AccountCacheTrait>,
+    account_cache: Arc<dyn AccountCacheTrait + Sync + Send>,
 }
 
 /// 可选项
@@ -158,11 +160,13 @@ impl Options {
 }
 
 impl LatticeClient {
-    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, options: Option<Options>, account_lock: Option<Box<dyn AccountLockTrait>>, account_cache: Option<Box<dyn AccountCacheTrait>>) -> Self {
+    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, options: Option<Options>, account_lock: Option<Arc<dyn AccountLockTrait + Sync + Send>>, account_cache: Option<Arc<dyn AccountCacheTrait + Sync + Send>>) -> Self {
         let options: Options = options.unwrap_or_else(|| Options::default());
         let http_client = connecting_node_config.new_http_client();
-        let account_lock = account_lock.unwrap_or_else(|| Box::new(DefaultAccountLock::new()));
-        let account_cache = account_cache.unwrap_or_else(|| Box::new(DefaultAccountCache::new(true, Duration::from_secs(10), http_client.clone())));
+        let default_account_lock = Arc::new(DefaultAccountLock::new()) as Arc<dyn AccountLockTrait + Sync + Send>;
+        let default_account_cache = Arc::new(DefaultAccountCache::new(true, Duration::from_secs(10), http_client.clone())) as Arc<dyn AccountCacheTrait + Sync + Send>;
+        let account_lock = account_lock.unwrap_or_else(|| default_account_lock);
+        let account_cache = account_cache.unwrap_or_else(|| default_account_cache);
 
         LatticeClient {
             chain_config,
@@ -206,6 +210,7 @@ impl LatticeClient {
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
+        println!("发送的交易为：{:?}", transaction);
         let result = self.http_client.send_raw_tx(chain_id, transaction);
 
         match result {
@@ -213,7 +218,6 @@ impl LatticeClient {
                 block.hash = hash.clone();
                 block.height = block.height + 1;
                 self.account_cache.set(chain_id, credentials.account_address.as_str(), block);
-
                 Ok(hash)
             }
             Err(e) => Err(e)
@@ -335,6 +339,8 @@ impl LatticeClient {
 
 #[cfg(test)]
 mod test {
+    use std::thread;
+
     use super::*;
 
     const COUNTER_ABI: &str = r#"[
@@ -368,7 +374,7 @@ mod test {
     ]"#;
 
     const COUNTER_BYTECODE: &str = "0x60806040526000805534801561001457600080fd5b50610278806100246000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c80635b34b96614610046578063a87d942c14610050578063f5c5ad831461006e575b600080fd5b61004e610078565b005b610058610093565b60405161006591906100d0565b60405180910390f35b61007661009c565b005b600160008082825461008a919061011a565b92505081905550565b60008054905090565b60016000808282546100ae91906101ae565b92505081905550565b6000819050919050565b6100ca816100b7565b82525050565b60006020820190506100e560008301846100c1565b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b6000610125826100b7565b9150610130836100b7565b9250817f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0383136000831215161561016b5761016a6100eb565b5b817f80000000000000000000000000000000000000000000000000000000000000000383126000831216156101a3576101a26100eb565b5b828201905092915050565b60006101b9826100b7565b91506101c4836100b7565b9250827f8000000000000000000000000000000000000000000000000000000000000000018212600084121516156101ff576101fe6100eb565b5b827f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff018213600084121615610237576102366100eb565b5b82820390509291505056fea2646970667358221220d841351625356129f6266ada896818d690dbc4b0d176774a97d745dfbe2fe50164736f6c634300080b0033";
-    const CHAIN_ID: u64 = 2;
+    const CHAIN_ID: u64 = 1;
 
     struct Setup {
         chain_config: ChainConfig,
@@ -385,12 +391,12 @@ mod test {
             };
             let connecting_node_config = ConnectingNodeConfig {
                 ip: String::from("192.168.1.185"),
-                http_port: 13800,
+                http_port: 13000,
                 websocket_port: 13001,
             };
             let credentials = Credentials {
-                sk: String::from("0xdbd91293f324e5e49f040188720c6c9ae7e6cc2b4c5274120ee25808e8f4b6a7"),
-                account_address: String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s"),
+                sk: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb"),
+                account_address: String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi"),
                 passphrase: None,
                 file_key: None,
             };
@@ -408,10 +414,22 @@ mod test {
     #[test]
     fn test_transfer() {
         let setup = Setup::new();
-        let result = setup.lattice.transfer(setup.credentials, CHAIN_ID, "0x01", None, None);
-        match result {
-            Ok(hash) => { println!("转账交易的哈希：{}", hash) }
-            Err(e) => { println!("转账错误，{}", e); }
+        let mut handles = vec![];
+        let lattice = Arc::new(setup.lattice);
+        for i in 0..20 {
+            let lattice = Arc::clone(&lattice);
+            let credential = setup.credentials.clone();
+            let handle = thread::spawn(move || {
+                let result = lattice.transfer(credential, CHAIN_ID, "0x01", None, None);
+                match result {
+                    Ok(hash) => { println!("第{}次转账交易的哈希：{}", i + 1, hash) }
+                    Err(e) => { println!("第{}次转账错误，{}", i + 1, e); }
+                }
+            });
+            handles.push(handle);
+        }
+        for handle in handles {
+            handle.join().unwrap();
         }
     }
 
