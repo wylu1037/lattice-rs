@@ -30,7 +30,7 @@ pub trait AccountCacheTrait {
     ///
     /// ## 出参
     /// + `LatestBlock`
-    async fn get(&self, chain_id: u64, account_address: &str) -> LatestBlock;
+    fn get(&self, chain_id: u64, account_address: &str) -> LatestBlock;
 
     /// # 设置http client
     ///
@@ -87,9 +87,9 @@ impl AccountCacheTrait for DefaultAccountCache {
         }
     }
 
-    async fn get(&self, chain_id: u64, account_address: &str) -> LatestBlock {
+    fn get(&self, chain_id: u64, account_address: &str) -> LatestBlock {
         if !&self.enable {
-            let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address)).await;
+            let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address));
             return result.unwrap();
         }
 
@@ -99,7 +99,7 @@ impl AccountCacheTrait for DefaultAccountCache {
         match cached_block_option {
             Some(block) => { cached_block = block }
             None => {
-                let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address)).await;
+                let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address));
                 cached_block = result.unwrap();
             }
         }
@@ -110,7 +110,7 @@ impl AccountCacheTrait for DefaultAccountCache {
             let daemon_hash_expire_at = map.get(&chain_id).unwrap();
             if SystemTime::now() > *daemon_hash_expire_at {
                 println!("守护区块哈希已过期，开始更新守护区块哈希，chainId: {}, account_address: {}", chain_id, account_address);
-                let latest_daemon_block = self.http_client.get_latest_daemon_block(chain_id).await.unwrap();
+                let latest_daemon_block = self.http_client.get_latest_daemon_block(chain_id).unwrap();
                 let daemon_hash_expire_at = SystemTime::now().add(self.daemon_hash_expiration_duration);
                 map.insert(chain_id, daemon_hash_expire_at);
                 cached_block.daemon_hash = latest_daemon_block.hash;
@@ -130,16 +130,18 @@ impl AccountCacheTrait for DefaultAccountCache {
 
 #[cfg(test)]
 mod test {
+    use std::thread;
+
     use super::*;
 
-    #[tokio::test]
-    async fn test() {
+    #[test]
+    fn test() {
         let http_client = HttpClient::new("192.168.1.185", 13800);
         let default = DefaultAccountCache::new(true, Duration::from_secs(1), http_client);
-        let mut block = default.get(2, "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi").await;
+        let mut block = default.get(2, "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi");
         println!("block: {:?}", block);
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        block = default.get(2, "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi").await;
+        thread::sleep(Duration::from_secs(2));
+        block = default.get(2, "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi");
         println!("block: {:?}", block);
     }
 }

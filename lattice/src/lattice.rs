@@ -185,11 +185,11 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub async fn transfer(&self, credentials: Credentials, chain_id: u64, payload: &str, amount: Option<u128>, joule: Option<u128>) -> Result<String, Error> {
+    pub fn transfer(&self, credentials: Credentials, chain_id: u64, payload: &str, amount: Option<u128>, joule: Option<u128>) -> Result<String, Error> {
         let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
         let _guard = account_lock.lock().unwrap();
 
-        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str()).await;
+        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
         // let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
 
         let mut transaction = TransferBuilder::builder()
@@ -206,7 +206,7 @@ impl LatticeClient {
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
-        let result = self.http_client.send_raw_tx(chain_id, transaction).await;
+        let result = self.http_client.send_raw_tx(chain_id, transaction);
 
         match result {
             Ok(hash) => {
@@ -232,9 +232,9 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub async fn deploy_contract(&self, credentials: Credentials, chain_id: u64, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
+    pub fn deploy_contract(&self, credentials: Credentials, chain_id: u64, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
-        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
+        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).unwrap();
 
         let mut transaction = DeployContractBuilder::builder()
             .set_current_block(block)
@@ -251,7 +251,7 @@ impl LatticeClient {
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
-        self.http_client.send_raw_tx(chain_id, transaction).await
+        self.http_client.send_raw_tx(chain_id, transaction)
     }
 
     /// # 调用合约
@@ -267,9 +267,9 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub async fn call_contract(&self, credentials: Credentials, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
+    pub fn call_contract(&self, credentials: Credentials, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
         // Get latest block
-        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
+        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).unwrap();
 
         let mut transaction = CallContractBuilder::builder()
             .set_current_block(block)
@@ -286,7 +286,7 @@ impl LatticeClient {
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
         transaction.sign = signature;
 
-        self.http_client.send_raw_tx(chain_id, transaction).await
+        self.http_client.send_raw_tx(chain_id, transaction)
     }
 
     /// # 预调用合约（不会上链）
@@ -299,7 +299,7 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<Receipt, Error>`
-    pub async fn pre_call_contract(&self, chain_id: u64, owner: &str, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
+    pub fn pre_call_contract(&self, chain_id: u64, owner: &str, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
         let transaction = CallContractBuilder::builder()
             .set_current_block(
                 LatestBlock {
@@ -313,7 +313,7 @@ impl LatticeClient {
             .set_payload(payload.unwrap_or("0x"))
             .build();
 
-        self.http_client.pre_call_contract(chain_id, transaction).await
+        self.http_client.pre_call_contract(chain_id, transaction)
     }
 
     /// # 签名交易并发送交易
@@ -324,12 +324,12 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub async fn sign_and_send_tx(self, credentials: Credentials, chain_id: u64, mut tx: Transaction) -> Result<String, Error> {
+    pub fn sign_and_send_tx(self, credentials: Credentials, chain_id: u64, mut tx: Transaction) -> Result<String, Error> {
         let sk = HexString::new(&credentials.get_sk()).decode();
         let (_, signature) = tx.sign(chain_id, &sk, self.chain_config.curve);
         tx.sign = signature;
 
-        self.http_client.send_raw_tx(chain_id, tx).await
+        self.http_client.send_raw_tx(chain_id, tx)
     }
 }
 
@@ -385,7 +385,7 @@ mod test {
             };
             let connecting_node_config = ConnectingNodeConfig {
                 ip: String::from("192.168.1.185"),
-                http_port: 13000,
+                http_port: 13800,
                 websocket_port: 13001,
             };
             let credentials = Credentials {
@@ -405,62 +405,32 @@ mod test {
         }
     }
 
-    #[tokio::test]
-    async fn test_transfer() {
+    #[test]
+    fn test_transfer() {
         let setup = Setup::new();
-        let result = setup.lattice.transfer(setup.credentials, CHAIN_ID, "0x01", None, None).await;
+        let result = setup.lattice.transfer(setup.credentials, CHAIN_ID, "0x01", None, None);
         match result {
             Ok(hash) => { println!("转账交易的哈希：{}", hash) }
             Err(e) => { println!("转账错误，{}", e); }
         }
     }
 
-    #[tokio::test]
-    async fn test_deploy_counter_contract() {
-        let chain_config = ChainConfig {
-            curve: Curve::Sm2p256v1,
-            token_less: true,
-        };
-        let connecting_node_config = ConnectingNodeConfig {
-            ip: String::from("192.168.1.185"),
-            http_port: 13800,
-            websocket_port: 13001,
-        };
-        let credentials = Credentials {
-            sk: String::from("0xdbd91293f324e5e49f040188720c6c9ae7e6cc2b4c5274120ee25808e8f4b6a7"),
-            account_address: String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s"),
-            passphrase: None,
-            file_key: None,
-        };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, None, None, None);
-        let deploy_result = lattice.deploy_contract(credentials, 2, COUNTER_BYTECODE, None, None, None).await;
+    #[test]
+    fn test_deploy_counter_contract() {
+        let setup = Setup::new();
+        let deploy_result = setup.lattice.deploy_contract(setup.credentials, 2, COUNTER_BYTECODE, None, None, None);
         match deploy_result {
             Ok(hash) => { println!("部署合约的交易哈希：{}", hash); }
             Err(e) => { println!("部署合约错误，{}", e); }
         }
     }
 
-    #[tokio::test]
-    async fn test_pre_call_contract() {
-        let chain_config = ChainConfig {
-            curve: Curve::Sm2p256v1,
-            token_less: true,
-        };
-        let connecting_node_config = ConnectingNodeConfig {
-            ip: String::from("192.168.1.185"),
-            http_port: 13800,
-            websocket_port: 13001,
-        };
-        let credentials = Credentials {
-            sk: String::from("0xdbd91293f324e5e49f040188720c6c9ae7e6cc2b4c5274120ee25808e8f4b6a7"),
-            account_address: String::from("zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s"),
-            passphrase: None,
-            file_key: None,
-        };
-        let lattice = LatticeClient::new(chain_config, connecting_node_config, None, None, None);
+    #[test]
+    fn test_pre_call_contract() {
+        let setup = Setup::new();
         let abi = Abi::new(COUNTER_ABI);
         let code = abi.encode("getCount", vec![]);
-        let _result = lattice.pre_call_contract(2, "zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s", "zltc_Yw1XgbrmeEdJcQJcofN48XD5vxwST4uiy", &code, None).await;
+        let _result = setup.lattice.pre_call_contract(2, "zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s", "zltc_Yw1XgbrmeEdJcQJcofN48XD5vxwST4uiy", &code, None);
         match _result {
             Ok(receipt) => { println!("预调用合约，{:?}", serde_json::to_string(&receipt)) }
             Err(e) => { println!("预调用合约错误，{}", e) }

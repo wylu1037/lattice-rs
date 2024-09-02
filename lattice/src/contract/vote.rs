@@ -97,8 +97,8 @@ mod test {
 
     const CHAIN_ID: u64 = 1;
 
-    #[tokio::test]
-    async fn test_new_vote_tx() {
+    #[test]
+    fn test_new_vote_tx() {
         let owner = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
         let chain_config = ChainConfig {
             curve: Curve::Sm2p256v1,
@@ -116,7 +116,7 @@ mod test {
             file_key: None,
         };
         let lattice = LatticeClient::new(chain_config, connecting_node_config, None, None, None);
-        let block = lattice.http_client.get_latest_block(CHAIN_ID, &Address::new(owner)).await.unwrap();
+        let block = lattice.http_client.get_latest_block(CHAIN_ID, &Address::new(owner)).unwrap();
 
         let mut tx = VoteBuiltinContract::new().new_vote_tx("0x012629af43a2e7cf024cdaeb8c108078b3b62a9f171300000000000000", true);
 
@@ -124,7 +124,7 @@ mod test {
         tx.parent_hash = block.hash;
         tx.daemon_hash = block.daemon_hash;
 
-        let res = lattice.sign_and_send_tx(credentials, 2, tx).await;
+        let res = lattice.sign_and_send_tx(credentials, 2, tx);
         match res {
             Err(err) => println!("Err {}", err),
             Ok(v) => println!("Hash {}", v)
