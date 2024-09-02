@@ -45,9 +45,9 @@ macro_rules! impl_transaction_builder {
             /// ## 出参
             /// + `Self`
             fn set_current_block(mut self, block: LatestBlock) -> Self {
-                self.transaction.height = block.current_tblock_height + 1;
-                self.transaction.parent_hash = block.current_tblock_hash;
-                self.transaction.daemon_hash = block.current_dblock_hash;
+                self.transaction.height = block.height + 1;
+                self.transaction.parent_hash = block.hash;
+                self.transaction.daemon_hash = block.daemon_hash;
                 self
             }
 

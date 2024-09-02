@@ -120,9 +120,9 @@ mod test {
 
         let mut tx = VoteBuiltinContract::new().new_vote_tx("0x012629af43a2e7cf024cdaeb8c108078b3b62a9f171300000000000000", true);
 
-        tx.height = block.current_tblock_height + 1;
-        tx.parent_hash = block.current_tblock_hash;
-        tx.daemon_hash = block.current_dblock_hash;
+        tx.height = block.height + 1;
+        tx.parent_hash = block.hash;
+        tx.daemon_hash = block.daemon_hash;
 
         let res = lattice.sign_and_send_tx(credentials, 2, tx).await;
         match res {

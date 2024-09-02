@@ -275,9 +275,9 @@ impl LatticeClient {
         let transaction = CallContractBuilder::builder()
             .set_current_block(
                 LatestBlock {
-                    current_dblock_hash: ZERO_HASH_STRING.to_string(),
-                    current_tblock_hash: ZERO_HASH_STRING.to_string(),
-                    current_tblock_height: 0,
+                    height: 0,
+                    hash: ZERO_HASH_STRING.to_string(),
+                    daemon_hash: ZERO_HASH_STRING.to_string(),
                 })
             .set_owner(owner)
             .set_linker(contract_address)
