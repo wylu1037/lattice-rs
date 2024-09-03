@@ -8,7 +8,6 @@ use abi::abi::Abi;
 use crypto::Transaction;
 use model::{Curve, Error, HexString};
 use model::block::LatestBlock;
-use model::common::Address;
 use model::constants::{PREFIX_OF_HEX, ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::receipt::Receipt;
 use wallet::file_key::FileKey;
@@ -178,6 +177,37 @@ impl LatticeClient {
         }
     }
 
+    /// # 处理交易
+    ///
+    /// ## 入参
+    /// + `credentials: Credentials`:
+    /// + `chain_id: u64`:
+    /// + `mut transaction: Transaction`:
+    /// + `mut block: LatestBlock`:
+    ///
+    /// ## 出参
+    /// + `Result<String, Error>`: 交易哈希
+    fn handle_transaction(&self, credentials: Credentials, chain_id: u64, mut transaction: Transaction, mut block: LatestBlock) -> Result<String, Error> {
+        // Step1 sign transaction
+        let sk = HexString::new(credentials.get_sk().as_str()).decode();
+        let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
+        transaction.sign = signature;
+
+        // Step2 send transaction
+        let result = self.http_client.send_raw_tx(chain_id, transaction);
+
+        // Step3 handle cache
+        match result {
+            Ok(hash) => {
+                block.hash = hash.clone();
+                block.height = block.height + 1;
+                self.account_cache.set(chain_id, credentials.account_address.as_str(), block);
+                Ok(hash)
+            }
+            Err(e) => Err(e)
+        }
+    }
+
     /// # 转账
     ///
     /// ## 入参
@@ -194,9 +224,8 @@ impl LatticeClient {
         let _guard = account_lock.lock().unwrap();
 
         let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
-        // let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).await.unwrap();
 
-        let mut transaction = TransferBuilder::builder()
+        let transaction = TransferBuilder::builder()
             .set_current_block(block.clone())
             .set_owner(credentials.account_address.as_str())
             .set_linker(ZERO_ZLTC_ADDRESS)
@@ -205,22 +234,7 @@ impl LatticeClient {
             .set_joule(joule)
             .build();
 
-        // Sign transaction
-        let sk = HexString::new(credentials.get_sk().as_str()).decode();
-        let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
-        transaction.sign = signature;
-
-        let result = self.http_client.send_raw_tx(chain_id, transaction);
-
-        match result {
-            Ok(hash) => {
-                block.hash = hash.clone();
-                block.height = block.height + 1;
-                self.account_cache.set(chain_id, credentials.account_address.as_str(), block);
-                Ok(hash)
-            }
-            Err(e) => Err(e)
-        }
+        self.handle_transaction(credentials, chain_id, transaction, block)
     }
 
     /// # 部署合约
@@ -236,11 +250,13 @@ impl LatticeClient {
     /// ## 出参
     /// + `Result<String, Error>`
     pub fn deploy_contract(&self, credentials: Credentials, chain_id: u64, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
-        // Get latest block
-        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).unwrap();
+        let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
+        let _guard = account_lock.lock().unwrap();
 
-        let mut transaction = DeployContractBuilder::builder()
-            .set_current_block(block)
+        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
+
+        let transaction = DeployContractBuilder::builder()
+            .set_current_block(block.clone())
             .set_owner(credentials.account_address.as_str())
             .set_linker(ZERO_ZLTC_ADDRESS)
             .set_code(code)
@@ -249,12 +265,7 @@ impl LatticeClient {
             .set_joule(joule)
             .build();
 
-        // Sign transaction
-        let sk = HexString::new(credentials.get_sk().as_str()).decode();
-        let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
-        transaction.sign = signature;
-
-        self.http_client.send_raw_tx(chain_id, transaction)
+        self.handle_transaction(credentials, chain_id, transaction, block)
     }
 
     /// # 调用合约
@@ -271,11 +282,13 @@ impl LatticeClient {
     /// ## 出参
     /// + `Result<String, Error>`
     pub fn call_contract(&self, credentials: Credentials, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
-        // Get latest block
-        let block = self.http_client.get_latest_block(chain_id, &Address::new(credentials.get_account_address().as_str())).unwrap();
+        let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
+        let _guard = account_lock.lock().unwrap();
 
-        let mut transaction = CallContractBuilder::builder()
-            .set_current_block(block)
+        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
+
+        let transaction = CallContractBuilder::builder()
+            .set_current_block(block.clone())
             .set_owner(credentials.account_address.as_str())
             .set_linker(contract_address)
             .set_code(code)
@@ -284,12 +297,7 @@ impl LatticeClient {
             .set_joule(joule)
             .build();
 
-        // Sign transaction
-        let sk = HexString::new(credentials.get_sk().as_str()).decode();
-        let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
-        transaction.sign = signature;
-
-        self.http_client.send_raw_tx(chain_id, transaction)
+        self.handle_transaction(credentials, chain_id, transaction, block)
     }
 
     /// # 预调用合约（不会上链）
