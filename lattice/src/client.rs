@@ -6,6 +6,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink, SplitStream};
+use log::debug;
 use reqwest::blocking::Client;
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 use reqwest::Url;
@@ -247,6 +248,7 @@ impl HttpClient {
 
 impl HttpRequest for HttpClient {
     fn send(&self, message: &str, headers: HashMap<String, String>) -> Result<String, Error> {
+        debug!("开始发送JsonRpc请求，url: {}, body: {}", &self.url, message);
         let mut header_map = HeaderMap::new();
         header_map.insert(
             HeaderName::from_str(CONTENT_TYPE.as_str()).unwrap(),

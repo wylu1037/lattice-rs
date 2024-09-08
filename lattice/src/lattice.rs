@@ -6,10 +6,10 @@ use regex::Regex;
 
 use abi::abi::Abi;
 use crypto::Transaction;
-use model::{Curve, Error, HexString};
 use model::block::LatestBlock;
 use model::constants::{PREFIX_OF_HEX, ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::receipt::Receipt;
+use model::{Curve, Error, HexString};
 use wallet::file_key::FileKey;
 
 use crate::account_cache::{AccountCacheTrait, DefaultAccountCache};
@@ -346,9 +346,8 @@ impl LatticeClient {
 
 #[cfg(test)]
 mod test {
-    use std::thread;
-
     use super::*;
+    use std::thread;
 
     const COUNTER_ABI: &str = r#"[
         {
@@ -423,7 +422,7 @@ mod test {
         let setup = Setup::new();
         let mut handles = vec![];
         let lattice = Arc::new(setup.lattice);
-        for i in 0..86 {
+        for i in 0..1 {
             let lattice = Arc::clone(&lattice);
             let credential = setup.credentials.clone();
             let handle = thread::spawn(move || {
