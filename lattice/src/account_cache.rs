@@ -1,9 +1,9 @@
+use log::debug;
+use moka::sync::Cache;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
-
-use moka::sync::Cache;
 
 use model::block::LatestBlock;
 use model::common::Address;
@@ -111,6 +111,7 @@ impl AccountCacheTrait for DefaultAccountCache {
         if map.contains_key(&chain_id) {
             let daemon_hash_expire_at = map.get(&chain_id).unwrap();
             if SystemTime::now() > *daemon_hash_expire_at {
+                debug!("链【{}】的守护区块哈希已过期，开启更新守护区块哈希", chain_id);
                 let latest_daemon_block = self.http_client.get_latest_daemon_block(chain_id).unwrap();
                 let daemon_hash_expire_at = SystemTime::now().add(self.daemon_hash_expiration_duration);
                 map.insert(chain_id, daemon_hash_expire_at);
@@ -121,7 +122,7 @@ impl AccountCacheTrait for DefaultAccountCache {
             map.insert(chain_id, daemon_hash_expire_at);
         }
 
-        return cached_block;
+        cached_block
     }
 
     fn set_http_client(&mut self, http_client: HttpClient) {

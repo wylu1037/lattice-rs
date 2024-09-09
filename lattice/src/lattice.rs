@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
-
+use log::debug;
 use regex::Regex;
 
 use abi::abi::Abi;
@@ -220,6 +220,7 @@ impl LatticeClient {
     /// ## 出参
     /// + `Result<String, Error>`
     pub fn transfer(&self, credentials: Credentials, chain_id: u64, payload: &str, amount: Option<u128>, joule: Option<u128>) -> Result<String, Error> {
+        debug!("开始发起转账交易，chain_id: {}, payload: {}, amount: {}, joule: {}", chain_id, payload, amount, joule);
         let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
         let _guard = account_lock.lock().unwrap();
 
