@@ -1,15 +1,16 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
-use log::debug;
+
+use log::{debug, error};
 use regex::Regex;
 
 use abi::abi::Abi;
 use crypto::Transaction;
+use model::{Curve, Error, HexString};
 use model::block::LatestBlock;
 use model::constants::{PREFIX_OF_HEX, ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::receipt::Receipt;
-use model::{Curve, Error, HexString};
 use wallet::file_key::FileKey;
 
 use crate::account_cache::{AccountCacheTrait, DefaultAccountCache};
@@ -204,7 +205,10 @@ impl LatticeClient {
                 self.account_cache.set(chain_id, credentials.account_address.as_str(), block);
                 Ok(hash)
             }
-            Err(e) => Err(e)
+            Err(e) => {
+                error!("向链【{}】发送交易错误：{}", chain_id, e);
+                Err(e)
+            }
         }
     }
 
@@ -220,7 +224,7 @@ impl LatticeClient {
     /// ## 出参
     /// + `Result<String, Error>`
     pub fn transfer(&self, credentials: Credentials, chain_id: u64, payload: &str, amount: Option<u128>, joule: Option<u128>) -> Result<String, Error> {
-        debug!("开始发起转账交易，chain_id: {}, payload: {}, amount: {}, joule: {}", chain_id, payload, amount, joule);
+        debug!("开始发起转账交易，chain_id: {}, payload: {}, amount: {:?}, joule: {:?}", chain_id, payload, amount, joule);
         let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
         let _guard = account_lock.lock().unwrap();
 
@@ -347,8 +351,9 @@ impl LatticeClient {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::thread;
+
+    use super::*;
 
     const COUNTER_ABI: &str = r#"[
         {

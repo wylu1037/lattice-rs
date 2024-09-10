@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn test_lattice_to_eth() {
-        let addr = String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi");
+        let addr = String::from("zltc_jF4U7umzNpiE8uU35RCBp9f2qf53H5CZZ");
         let eth_addr = lattice_to_eth(addr.as_str());
         assert_eq!(String::from("0x5f2be9a02b43f748ee460bf36eed24fafa109920"), format!("0x{}", eth_addr))
     }
