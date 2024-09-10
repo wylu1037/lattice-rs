@@ -1,3 +1,3 @@
 pub mod builtin;
 pub mod ledger;
-pub mod vote;
+pub mod proposal;

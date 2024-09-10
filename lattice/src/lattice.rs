@@ -206,7 +206,7 @@ impl LatticeClient {
                 Ok(hash)
             }
             Err(e) => {
-                error!("向链【{}】发送交易错误：{}", chain_id, e);
+                error!("向链【{}】发送交易失败：{}", chain_id, e);
                 Err(e)
             }
         }
