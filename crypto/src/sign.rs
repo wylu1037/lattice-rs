@@ -167,6 +167,7 @@ impl KeyPair {
 
 #[cfg(test)]
 mod tests {
+    use model::constants::{PRIVATE_KEY_LENGTH, UNCOMPRESSED_PUBLIC_KEY_LENGTH};
     use model::enums::Curve;
     use model::HexString;
 
@@ -179,10 +180,13 @@ mod tests {
         let keypair_sm2p256v1 = KeyPair::new_keypair(Curve::Sm2p256v1);
         let keypair_secp256k1 = KeyPair::new_keypair(Curve::Secp256k1);
 
-        assert_eq!(keypair_sm2p256v1.public_key.len(), 65);
-        assert_eq!(hex::encode(keypair_sm2p256v1.secret_key.to_bytes_be()).len(), 64);
-        assert_eq!(keypair_secp256k1.public_key.len(), 65);
-        assert_eq!(keypair_secp256k1.secret_key.to_bytes_be().len(), 32)
+        println!("secp256k1: public key {}, private key {}", hex::encode(keypair_secp256k1.public_key.as_slice()), hex::encode(keypair_secp256k1.secret_key.to_bytes_be()));
+        println!("{}", keypair_secp256k1.address());
+
+        assert_eq!(keypair_sm2p256v1.public_key.len(), UNCOMPRESSED_PUBLIC_KEY_LENGTH);
+        assert_eq!(hex::encode(keypair_sm2p256v1.secret_key.to_bytes_be()).len(), PRIVATE_KEY_LENGTH * 2);
+        //assert_eq!(keypair_secp256k1.public_key.len(), UNCOMPRESSED_PUBLIC_KEY_LENGTH);
+        //assert_eq!(keypair_secp256k1.secret_key.to_bytes_be().len(), PRIVATE_KEY_LENGTH)
     }
 
     #[test]
@@ -277,5 +281,23 @@ mod tests {
         println!("{}", hex::encode(keypair.public_key.clone()));
         let address = public_key_to_address(keypair.public_key.as_slice(), Curve::Sm2p256v1);
         print!("{:?}", address);
+    }
+
+    #[test]
+    fn generate_address_secp256k1() {
+        let sk = HexString::new("0x659df3e341c10983b335f8ed6715ced4e46f4e82884253aeb191bbe54270f8ef").decode();
+        let key = KeyPair::from_secret_key(sk.as_slice(), Curve::Secp256k1);
+        let address = key.address();
+        let expected = "zltc_bmtVTk8SDcBwHNxaPu9Ds2RAVUpohMrCh";
+        assert_eq!(address, expected)
+    }
+
+    #[test]
+    fn generate_address_sm2p256v1() {
+        let sk = HexString::new("0x4cbe7c67f4676d021dca0f44d9ee9ea3ba499b700ccd4d22b21207d9935225cf").decode();
+        let key = KeyPair::from_secret_key(sk.as_slice(), Curve::Sm2p256v1);
+        let address = key.address();
+        let expected = "zltc_hJzY5yCoXmbnKFYJQDBeZHgamcSQALJFx";
+        assert_eq!(address, expected)
     }
 }

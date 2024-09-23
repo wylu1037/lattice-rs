@@ -19,7 +19,7 @@ pub fn public_key_to_address(public_key: &[u8], curve: Curve) -> String {
         public_key
     };
     let key_hash = hash_message(truncated_pk, curve);
-    let eth = &hex::decode(key_hash.as_bytes()).unwrap()[12..];
+    let eth = &hex::decode(key_hash).unwrap()[12..];
     eth_to_lattice(eth)
 }
 
@@ -86,13 +86,25 @@ mod tests {
 
     #[test]
     fn recovery_address_from_private_key_sm2p256v1() {
-        let sk_hex = HexString::new("0x72ffdd7245e0ad7cffd533ad99f54048bf3fa6358e071fba8c2d7783d992d997").decode();
+        let sk_hex = HexString::new("0x9860956de90cc61a05447ea067197be1fa08d712c4a5088c9cb62182bdca0f92").decode();
         let keypair = KeyPair::from_secret_key(&sk_hex, Curve::Sm2p256v1);
+        let expect_public_key = "04ad6fbe997867cc60240659f1bee52548c096491a06894c244fee79bab69deb621a33bbec28ede94ec03f27ab91e3dab0baeb395676baf26e3bc25fd4ce1ce374";
+        let actual_public_key = hex::encode(keypair.public_key.as_slice());
+        assert_eq!(expect_public_key, actual_public_key);
         let address = public_key_to_address(keypair.public_key.as_slice(), Curve::Sm2p256v1);
-        let expect_address = String::from("zltc_jF4U7umzNpiE8uU35RCBp9f2qf53H5CZZ");
+        let expect_address = String::from("zltc_oJCrxCx6X23m5xVZFLjexi8GGaib6Zwff");
         assert_eq!(expect_address, address)
     }
 
     #[test]
-    fn recovery_address_from_private_key_secp256k1() {}
+    fn recovery_address_from_private_key_secp256k1() {
+        let sk_hex = HexString::new("0xd2c784688ab85d689e358a7b030c9f26b8ee45e66e89d8842fa88da3b9637955").decode();
+        let keypair = KeyPair::from_secret_key(&sk_hex, Curve::Secp256k1);
+        let expect_public_key = "0431dc027c63ccb1229cae4a8f138b53c14f7989323e8cded430b54cf3ef9ddf5e348458706a05ab6c7597fc2b190adb2479e0cb635d92c9e5e92c396fae998bd6";
+        let actual_public_key = hex::encode(keypair.public_key.as_slice());
+        assert_eq!(expect_public_key, actual_public_key);
+        let address = public_key_to_address(keypair.public_key.as_slice(), Curve::Secp256k1);
+        let expect_address = String::from("zltc_cWAvRSgCKgfyp5Rz5TH8srmrZsH5fVYpg");
+        assert_eq!(expect_address, address)
+    }
 }
