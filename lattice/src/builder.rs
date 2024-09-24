@@ -40,7 +40,7 @@ macro_rules! impl_transaction_builder {
             /// # 设置交易的当前区块信息，包括账户高度，父交易哈希，父区块哈希等等
             ///
             /// ## 入参
-            /// + `block: CurrentTDBlock`:
+            /// + `block: LatestBlock`:
             ///
             /// ## 出参
             /// + `Self`

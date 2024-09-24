@@ -63,24 +63,34 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
             };
         }
         BOOL_TY => {
-            let arg = arg.downcast_ref::<&str>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
-                Some(v) => {
+            let arg_str = arg.downcast_ref::<&str>();
+            let arg_string = arg.downcast_ref::<String>();
+            return match (arg_str, arg_string) {
+                (Some(v), _) => {
                     let v = *v;
                     let b: bool = v.to_lowercase().parse().unwrap();
                     Ok(DynSolValue::Bool(b))
                 }
+                (_, Some(v)) => {
+                    let b: bool = v.to_lowercase().parse().unwrap();
+                    Ok(DynSolValue::Bool(b))
+                }
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
             };
         }
         ADDRESS_TY => {
-            let arg = arg.downcast_ref::<&str>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
-                Some(v) => {
+            let arg_str = arg.downcast_ref::<&str>();
+            let arg_string = arg.downcast_ref::<String>();
+            return match (arg_str, arg_string) {
+                (Some(v), _) => {
                     let addr = Address::new(*v);
                     Ok(DynSolValue::Address(SolAddress::parse_checksummed(addr.to_ethereum_address(), None).expect("invalid address checksum")))
                 }
+                (_, Some(v)) => {
+                    let addr = Address::new(v);
+                    Ok(DynSolValue::Address(SolAddress::parse_checksummed(addr.to_ethereum_address(), None).expect("invalid address checksum")))
+                }
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input string value", ty))),
             };
         }
         TUPLE_TY => {
@@ -103,10 +113,10 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
         }
         _ if is_bytes(ty) => {
             let (_, size) = parse_bytes(ty);
-            let arg = arg.downcast_ref::<&str>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
-                Some(v) => {
+            let arg_str = arg.downcast_ref::<&str>();
+            let arg_string = arg.downcast_ref::<String>();
+            return match (arg_str, arg_string) {
+                (Some(v), _) => {
                     let bytes = HexString::new(v).decode();
                     if size > 0 && bytes.len() != size {
                         return Err(Error::new(&format!("{} expected length is {}, but actual length is {}", ty, size, bytes.len())));
@@ -117,14 +127,26 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
                         Ok(DynSolValue::Bytes(bytes))
                     }
                 }
+                (_, Some(v)) => {
+                    let bytes = HexString::new(v).decode();
+                    if size > 0 && bytes.len() != size {
+                        return Err(Error::new(&format!("{} expected length is {}, but actual length is {}", ty, size, bytes.len())));
+                    }
+                    if size > 0 {
+                        Ok(DynSolValue::FixedBytes(B256::from_slice(bytes.as_slice()), size))
+                    } else {
+                        Ok(DynSolValue::Bytes(bytes))
+                    }
+                }
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input &str value", ty))),
             };
         }
         _ if is_array(ty) => {
             let (child_ty, size) = parse_array(ty);
-            let arg = arg.downcast_ref::<Vec<&str>>();
-            return match arg {
-                None => Err(Error::new(&format!("invalid arg type, {} expected input Vec<&str> value", ty))),
-                Some(v) => {
+            let arg_vec_str = arg.downcast_ref::<Vec<&str>>();
+            let arg_vec_string = arg.downcast_ref::<Vec<String>>();
+            return match (arg_vec_str, arg_vec_string) {
+                (Some(v), _) => {
                     if size > 0 && v.len() != size {
                         return Err(Error::new(&format!("{} expected length is {}, but actual length is {}", ty, size, v.len())));
                     }
@@ -140,6 +162,23 @@ pub fn convert_argument(ty: &str, components: Vec<Param>, arg: &Box<dyn Any>) ->
                         Ok(DynSolValue::Array(converted_arg_vec))
                     }
                 }
+                (_, Some(v)) => {
+                    if size > 0 && v.len() != size {
+                        return Err(Error::new(&format!("{} expected length is {}, but actual length is {}", ty, size, v.len())));
+                    }
+                    let mut converted_arg_vec: Vec<DynSolValue> = Vec::new();
+                    for elem in v {
+                        let boxed_arg: Box<dyn Any> = Box::new(elem.clone());
+                        let converted = convert_argument(child_ty.as_str(), vec![], &boxed_arg).unwrap();
+                        converted_arg_vec.push(converted);
+                    }
+                    if size > 0 {
+                        Ok(DynSolValue::FixedArray(converted_arg_vec))
+                    } else {
+                        Ok(DynSolValue::Array(converted_arg_vec))
+                    }
+                }
+                _ => Err(Error::new(&format!("invalid arg type, {} expected input Vec<&str> value", ty))),
             };
         }
         _ if is_uint(ty) => {
@@ -379,5 +418,12 @@ mod tests {
                 println!("ty {:?}, size {:?}", ty.as_str(), size.as_str())
             }
         }
+    }
+
+    #[test]
+    fn test_ty_parse() {
+        let string = "trUe";
+        let b: bool = string.to_lowercase().parse().unwrap();
+        assert_eq!(b, true)
     }
 }

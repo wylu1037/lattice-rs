@@ -1,5 +1,7 @@
 use num_bigint::BigUint;
 
+use crate::HexString;
+
 pub trait IntoBigUint {
     fn into_big_uint(self) -> BigUint;
 }
@@ -37,6 +39,21 @@ pub fn number_to_vec<T>(num: T) -> Vec<u8>
     num.into_big_uint().to_bytes_be()
 }
 
+/// 将字符串转为byte数组，然后再扩展其长度为32的倍数，之后每32个字节转为一个hex字符串，返回一个字符串数组
+pub fn string_to_bytes32_array(data: &str) -> Vec<String> {
+    let mut bytes = data.to_string().into_bytes();
+    let padding_size = 32 - bytes.len() % 32;
+    bytes.extend(vec![0; padding_size]);
+
+    let hex_string_array: Vec<String> = bytes
+        .chunks(32)
+        .map(|chunk| {
+            HexString::from(chunk).hex_string
+        })
+        .collect();
+
+    hex_string_array
+}
 
 #[cfg(test)]
 mod tests {
