@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crypto::aes;
+use crypto::aes::AesMode;
 use crypto::hash::hash_message;
 use crypto::sign::KeyPair;
 use model::Curve;
@@ -112,7 +113,8 @@ impl FileKey {
         }
 
         let iv_bytes = hex::decode(&self.cipher.aes.iv).unwrap();
-        let sk_hex = aes::decrypt(&self.cipher.cipher_text, &aes_key, &iv_bytes);
+        // let sk_hex = aes::decrypt(&self.cipher.cipher_text, &aes_key, &iv_bytes);
+        let sk_hex = aes::decrypt_with_mode(AesMode::CTR, &self.cipher.cipher_text, &aes_key, Some(&iv_bytes));
         let secret_bytes = hex::decode(sk_hex).unwrap();
 
         Ok(KeyPair::from_secret_key(&secret_bytes, curve))
@@ -134,7 +136,8 @@ fn gen_cipher(secret_key: &[u8], password: &[u8], curve: Curve) -> Cipher {
     let key = scrypt_key(password, &salt);
     let aes_key = hex::decode(&key[0..32]).unwrap();
     let hash_key = hex::decode(&key[32..64]).unwrap();
-    let cipher_text = aes::encrypt(&secret_key, &aes_key, &iv_bytes);
+    // let cipher_text = aes::encrypt(&secret_key, &aes_key, &iv_bytes);
+    let cipher_text = aes::encrypt_with_mode(AesMode::CTR, &secret_key, &aes_key, Some(&iv_bytes));
     let mac = compute_mac(&hash_key, &cipher_text, curve);
     Cipher {
         aes: Aes {
