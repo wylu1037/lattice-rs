@@ -1,21 +1,21 @@
-use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
 
 use log::{debug, error};
 use regex::Regex;
 
-use abi::abi::Abi;
 use crypto::Transaction;
-use model::{Curve, Error, HexString};
 use model::block::LatestBlock;
 use model::constants::{PREFIX_OF_HEX, ZERO_HASH_STRING, ZERO_ZLTC_ADDRESS};
 use model::receipt::Receipt;
+use model::{Curve, Error, HexString};
 use wallet::file_key::FileKey;
 
 use crate::account_cache::{AccountCacheTrait, DefaultAccountCache};
 use crate::account_lock::{AccountLockTrait, DefaultAccountLock};
-use crate::builder::{CallContractBuilder, DeployContractBuilder, TransactionBuilder, TransferBuilder};
+use crate::builder::{
+    CallContractBuilder, DeployContractBuilder, TransactionBuilder, TransferBuilder,
+};
 use crate::client::HttpClient;
 use crate::constants::REGEX_PRIVATE_KEY;
 
@@ -83,17 +83,7 @@ impl Credentials {
             HexString::from(&sk_bytes).hex_string
         }
     }
-
-    /// # 从credential中获取账户地址
-    ///
-    /// ## 出参
-    /// + `String`: 账户地址，示例`zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi`
-    fn get_account_address(&self) -> String {
-        let addr = &self.account_address;
-        addr.to_string()
-    }
 }
-
 
 /// 重试策略
 pub struct RetryPolicy {}
@@ -130,41 +120,42 @@ pub struct LatticeClient {
 }
 
 /// 可选项
-pub struct Options {
-    /// 是否启用缓存
-    enable_cache: Option<bool>,
-    /// 缓存的过期时间，默认 5s
-    cache_expiration_seconds: Option<u16>,
-    /// daemon hash的过期时间，默认 15s
-    daemon_hash_expiration_seconds: Option<u16>,
-}
-
-/// 缓存的区块信息
-pub struct CachedBlock {
-    /// 账户高度
-    height: u64,
-    /// 父交易哈希
-    parent_hash: String,
-    /// 守护区块哈希
-    daemon_block_hash: String,
-}
+pub struct Options {}
 
 impl Options {
     fn default() -> Self {
-        Options {
-            enable_cache: Some(false),
-            cache_expiration_seconds: Some(5),
-            daemon_hash_expiration_seconds: Some(15),
-        }
+        Options {}
     }
 }
 
 impl LatticeClient {
-    pub fn new(chain_config: ChainConfig, connecting_node_config: ConnectingNodeConfig, options: Option<Options>, account_lock: Option<Arc<dyn AccountLockTrait + Sync + Send>>, account_cache: Option<Arc<dyn AccountCacheTrait + Sync + Send>>) -> Self {
+    /// # 初始化
+    ///
+    /// ## 入参
+    /// + `chain_config: ChainConfig`: 链配置
+    /// + `connecting_node_config: ConnectingNodeConfig`: 连接节点配置
+    /// + `options: Option<Options>`: 可选项
+    /// + `account_lock: Option<Arc<dyn AccountLockTrait + Sync + Send>>`: 账户锁
+    /// + `account_cache: Option<Arc<dyn AccountCacheTrait + Sync + Send>>`: 账户缓存
+    ///
+    /// ## 出参
+    /// + `LatticeClient`: Lattice客户端
+    pub fn new(
+        chain_config: ChainConfig,
+        connecting_node_config: ConnectingNodeConfig,
+        options: Option<Options>,
+        account_lock: Option<Arc<dyn AccountLockTrait + Sync + Send>>,
+        account_cache: Option<Arc<dyn AccountCacheTrait + Sync + Send>>,
+    ) -> Self {
         let options: Options = options.unwrap_or_else(|| Options::default());
         let http_client = connecting_node_config.new_http_client();
-        let default_account_lock = Arc::new(DefaultAccountLock::new()) as Arc<dyn AccountLockTrait + Sync + Send>;
-        let default_account_cache = Arc::new(DefaultAccountCache::new(true, Duration::from_secs(10), http_client.clone())) as Arc<dyn AccountCacheTrait + Sync + Send>;
+        let default_account_lock =
+            Arc::new(DefaultAccountLock::new()) as Arc<dyn AccountLockTrait + Sync + Send>;
+        let default_account_cache = Arc::new(DefaultAccountCache::new(
+            true,
+            Duration::from_secs(10),
+            http_client.clone(),
+        )) as Arc<dyn AccountCacheTrait + Sync + Send>;
         let account_lock = account_lock.unwrap_or_else(|| default_account_lock);
         let account_cache = account_cache.unwrap_or_else(|| default_account_cache);
 
@@ -188,7 +179,13 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`: 交易哈希
-    fn handle_transaction(&self, credentials: Credentials, chain_id: u64, mut transaction: Transaction, mut block: LatestBlock) -> Result<String, Error> {
+    fn handle_transaction(
+        &self,
+        credentials: Credentials,
+        chain_id: u64,
+        mut transaction: Transaction,
+        mut block: LatestBlock,
+    ) -> Result<String, Error> {
         // Step1 sign transaction
         let sk = HexString::new(credentials.get_sk().as_str()).decode();
         let (_, signature) = transaction.sign(chain_id, &sk, self.chain_config.curve);
@@ -202,7 +199,8 @@ impl LatticeClient {
             Ok(hash) => {
                 block.hash = hash.clone();
                 block.height = block.height + 1;
-                self.account_cache.set(chain_id, credentials.account_address.as_str(), block);
+                self.account_cache
+                    .set(chain_id, credentials.account_address.as_str(), block);
                 Ok(hash)
             }
             Err(e) => {
@@ -223,12 +221,26 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub fn transfer(&self, credentials: Credentials, chain_id: u64, payload: &str, amount: Option<u128>, joule: Option<u128>) -> Result<String, Error> {
-        debug!("开始发起转账交易，chain_id: {}, payload: {}, amount: {:?}, joule: {:?}", chain_id, payload, amount, joule);
-        let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
+    pub fn transfer(
+        &self,
+        credentials: Credentials,
+        chain_id: u64,
+        payload: &str,
+        amount: Option<u128>,
+        joule: Option<u128>,
+    ) -> Result<String, Error> {
+        debug!(
+            "开始发起转账交易，chain_id: {}, payload: {}, amount: {:?}, joule: {:?}",
+            chain_id, payload, amount, joule
+        );
+        let account_lock = self
+            .account_lock
+            .obtain(chain_id, credentials.account_address.as_str());
         let _guard = account_lock.lock().unwrap();
 
-        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
+        let block = self
+            .account_cache
+            .get(chain_id, credentials.account_address.as_str());
 
         let transaction = TransferBuilder::builder()
             .set_current_block(block.clone())
@@ -254,11 +266,23 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub fn deploy_contract(&self, credentials: Credentials, chain_id: u64, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
-        let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
+    pub fn deploy_contract(
+        &self,
+        credentials: Credentials,
+        chain_id: u64,
+        code: &str,
+        amount: Option<u128>,
+        joule: Option<u128>,
+        payload: Option<&str>,
+    ) -> Result<String, Error> {
+        let account_lock = self
+            .account_lock
+            .obtain(chain_id, credentials.account_address.as_str());
         let _guard = account_lock.lock().unwrap();
 
-        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
+        let block = self
+            .account_cache
+            .get(chain_id, credentials.account_address.as_str());
 
         let transaction = DeployContractBuilder::builder()
             .set_current_block(block.clone())
@@ -286,11 +310,24 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub fn call_contract(&self, credentials: Credentials, chain_id: u64, contract_address: &str, code: &str, amount: Option<u128>, joule: Option<u128>, payload: Option<&str>) -> Result<String, Error> {
-        let account_lock = self.account_lock.obtain(chain_id, credentials.account_address.as_str());
+    pub fn call_contract(
+        &self,
+        credentials: Credentials,
+        chain_id: u64,
+        contract_address: &str,
+        code: &str,
+        amount: Option<u128>,
+        joule: Option<u128>,
+        payload: Option<&str>,
+    ) -> Result<String, Error> {
+        let account_lock = self
+            .account_lock
+            .obtain(chain_id, credentials.account_address.as_str());
         let _guard = account_lock.lock().unwrap();
 
-        let mut block = self.account_cache.get(chain_id, credentials.account_address.as_str());
+        let block = self
+            .account_cache
+            .get(chain_id, credentials.account_address.as_str());
 
         let transaction = CallContractBuilder::builder()
             .set_current_block(block.clone())
@@ -315,14 +352,20 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<Receipt, Error>`
-    pub fn pre_call_contract(&self, chain_id: u64, owner: &str, contract_address: &str, code: &str, payload: Option<&str>) -> Result<Receipt, Error> {
+    pub fn pre_call_contract(
+        &self,
+        chain_id: u64,
+        owner: &str,
+        contract_address: &str,
+        code: &str,
+        payload: Option<&str>,
+    ) -> Result<Receipt, Error> {
         let transaction = CallContractBuilder::builder()
-            .set_current_block(
-                LatestBlock {
-                    height: 0,
-                    hash: ZERO_HASH_STRING.to_string(),
-                    daemon_hash: ZERO_HASH_STRING.to_string(),
-                })
+            .set_current_block(LatestBlock {
+                height: 0,
+                hash: ZERO_HASH_STRING.to_string(),
+                daemon_hash: ZERO_HASH_STRING.to_string(),
+            })
             .set_owner(owner)
             .set_linker(contract_address)
             .set_code(code)
@@ -340,7 +383,12 @@ impl LatticeClient {
     ///
     /// ## 出参
     /// + `Result<String, Error>`
-    pub fn sign_and_send_tx(self, credentials: Credentials, chain_id: u64, mut tx: Transaction) -> Result<String, Error> {
+    pub fn sign_and_send_tx(
+        self,
+        credentials: Credentials,
+        chain_id: u64,
+        mut tx: Transaction,
+    ) -> Result<String, Error> {
         let sk = HexString::new(&credentials.get_sk()).decode();
         let (_, signature) = tx.sign(chain_id, &sk, self.chain_config.curve);
         tx.sign = signature;
@@ -352,6 +400,8 @@ impl LatticeClient {
 #[cfg(test)]
 mod test {
     use std::thread;
+
+    use abi::abi::Abi;
 
     use super::*;
 
@@ -389,8 +439,6 @@ mod test {
     const CHAIN_ID: u64 = 1;
 
     struct Setup {
-        chain_config: ChainConfig,
-        connecting_node_config: ConnectingNodeConfig,
         credentials: Credentials,
         lattice: LatticeClient,
     }
@@ -407,16 +455,22 @@ mod test {
                 websocket_port: 13001,
             };
             let credentials = Credentials {
-                sk: String::from("0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb"),
+                sk: String::from(
+                    "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb",
+                ),
                 account_address: String::from("zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi"),
                 passphrase: None,
                 file_key: None,
             };
-            let lattice = LatticeClient::new(chain_config.clone(), connecting_node_config.clone(), None, None, None);
-            // 浅浅青末云顶款
+            let lattice = LatticeClient::new(
+                chain_config.clone(),
+                connecting_node_config.clone(),
+                None,
+                None,
+                None,
+            );
+
             Setup {
-                chain_config,
-                connecting_node_config,
                 credentials,
                 lattice,
             }
@@ -434,8 +488,12 @@ mod test {
             let handle = thread::spawn(move || {
                 let result = lattice.transfer(credential, CHAIN_ID, "0x01", None, None);
                 match result {
-                    Ok(hash) => { println!("第{}次转账交易的哈希：{}", i + 1, hash) }
-                    Err(e) => { println!("第{}次转账错误，{}", i + 1, e); }
+                    Ok(hash) => {
+                        println!("第{}次转账交易的哈希：{}", i + 1, hash)
+                    }
+                    Err(e) => {
+                        println!("第{}次转账错误，{}", i + 1, e);
+                    }
                 }
             });
             handles.push(handle);
@@ -448,10 +506,17 @@ mod test {
     #[test]
     fn test_deploy_counter_contract() {
         let setup = Setup::new();
-        let deploy_result = setup.lattice.deploy_contract(setup.credentials, 2, COUNTER_BYTECODE, None, None, None);
+        let deploy_result =
+            setup
+                .lattice
+                .deploy_contract(setup.credentials, 2, COUNTER_BYTECODE, None, None, None);
         match deploy_result {
-            Ok(hash) => { println!("部署合约的交易哈希：{}", hash); }
-            Err(e) => { println!("部署合约错误，{}", e); }
+            Ok(hash) => {
+                println!("部署合约的交易哈希：{}", hash);
+            }
+            Err(e) => {
+                println!("部署合约错误，{}", e);
+            }
         }
     }
 
@@ -460,10 +525,20 @@ mod test {
         let setup = Setup::new();
         let abi = Abi::new(COUNTER_ABI);
         let code = abi.encode("getCount", vec![]);
-        let _result = setup.lattice.pre_call_contract(2, "zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s", "zltc_Yw1XgbrmeEdJcQJcofN48XD5vxwST4uiy", &code, None);
+        let _result = setup.lattice.pre_call_contract(
+            2,
+            "zltc_dS73XWcJqu2uEk4cfWsX8DDhpb9xsaH9s",
+            "zltc_Yw1XgbrmeEdJcQJcofN48XD5vxwST4uiy",
+            &code,
+            None,
+        );
         match _result {
-            Ok(receipt) => { println!("预调用合约，{:?}", serde_json::to_string(&receipt)) }
-            Err(e) => { println!("预调用合约错误，{}", e) }
+            Ok(receipt) => {
+                println!("预调用合约，{:?}", serde_json::to_string(&receipt))
+            }
+            Err(e) => {
+                println!("预调用合约错误，{}", e)
+            }
         }
     }
 
@@ -477,7 +552,8 @@ mod test {
             file_key: Some(file_key.to_string()),
         };
         let sk = credentials.get_sk();
-        let expect = "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb".to_string();
+        let expect =
+            "0x23d5b2a2eb0a9c8b86d62cbc3955cfd1fb26ec576ecc379f402d0f5d2b27a7bb".to_string();
         assert_eq!(expect, sk)
     }
 }

@@ -1,30 +1,29 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink, SplitStream};
+use futures_util::{SinkExt, StreamExt};
 use log::debug;
 use reqwest::blocking::Client;
-use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::mpsc::Sender;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 use crypto::Transaction;
 use model::block::{DBlock, LatestBlock};
 use model::common::Address;
-use model::Error;
 use model::receipt::Receipt;
+use model::Error;
 
-use crate::constants::JSON_RPC;
+use crate::constants::JSON_RPC_VERSION;
 
 /// 定义一个同步阻塞的客户端trait
 pub trait HttpRequest {
@@ -53,7 +52,7 @@ impl JsonRpcBody {
     pub fn new(method: String, params: Vec<serde_json::Value>) -> Self {
         JsonRpcBody {
             id: 1,
-            json_rpc: JSON_RPC.to_string(),
+            json_rpc: JSON_RPC_VERSION.to_string(),
             method,
             params,
         }
@@ -125,7 +124,7 @@ impl HttpClient {
         }
         let headers = HashMap::from([
             (CONTENT_TYPE.to_string(), String::from("application/json")),
-            (String::from("ChainID"), chain_id_as_string)
+            (String::from("ChainID"), chain_id_as_string),
         ]);
         headers
     }
@@ -138,9 +137,13 @@ impl HttpClient {
     ///
     /// ## 出参
     /// + `Result<T, Error>`
-    fn send_json_rpc_request<T>(&self, body: &JsonRpcBody, headers: HashMap<String, String>) -> Result<T, Error>
-        where
-            T: for<'a> Deserialize<'a>
+    fn send_json_rpc_request<T>(
+        &self,
+        body: &JsonRpcBody,
+        headers: HashMap<String, String>,
+    ) -> Result<T, Error>
+    where
+        T: for<'a> Deserialize<'a>,
     {
         let message = serde_json::to_string(&body)?;
         let response = self.send(message.as_str(), headers)?;
@@ -161,7 +164,8 @@ impl HttpClient {
     /// + `Box<DBlock>`
     pub fn get_latest_daemon_block(&self, chain_id: u64) -> Result<DBlock, Error> {
         let body = JsonRpcBody::new("latc_getCurrentDBlock".to_string(), vec![]);
-        let result: Result<DBlock, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id));
+        let result: Result<DBlock, Error> =
+            self.send_json_rpc_request(&body, Self::new_headers(chain_id));
         result
     }
 
@@ -176,8 +180,12 @@ impl HttpClient {
     ///   + `Ok(CurrentTDBlock)`
     ///   + `Err(err)`
     pub fn get_latest_block(&self, chain_id: u64, addr: &Address) -> Result<LatestBlock, Error> {
-        let body = JsonRpcBody::new("latc_getCurrentTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
-        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id));
+        let body = JsonRpcBody::new(
+            "latc_getCurrentTBDB".to_string(),
+            vec![json!(addr.to_zltc_address())],
+        );
+        let result: Result<LatestBlock, Error> =
+            self.send_json_rpc_request(&body, Self::new_headers(chain_id));
         result
     }
 
@@ -191,9 +199,17 @@ impl HttpClient {
     /// + `Result<CurrentTDBlock, Error>`
     ///   + `Ok(CurrentTDBlock)`
     ///   + `Err(err)`
-    pub fn get_latest_block_with_pending(&self, chain_id: u64, addr: &Address) -> Result<LatestBlock, Error> {
-        let body = JsonRpcBody::new("latc_getPendingTBDB".to_string(), vec![json!(addr.to_zltc_address())]);
-        let result: Result<LatestBlock, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id));
+    pub fn get_latest_block_with_pending(
+        &self,
+        chain_id: u64,
+        addr: &Address,
+    ) -> Result<LatestBlock, Error> {
+        let body = JsonRpcBody::new(
+            "latc_getPendingTBDB".to_string(),
+            vec![json!(addr.to_zltc_address())],
+        );
+        let result: Result<LatestBlock, Error> =
+            self.send_json_rpc_request(&body, Self::new_headers(chain_id));
         result
     }
 
@@ -209,8 +225,12 @@ impl HttpClient {
     ///   + `Ok(String)`
     ///   + `Err(err)`
     pub fn send_raw_tx(&self, chain_id: u64, signed_tx: Transaction) -> Result<String, Error> {
-        let body = JsonRpcBody::new("wallet_sendRawTBlock".to_string(), vec![json!(signed_tx.to_raw_tx())]);
-        let result: Result<String, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id));
+        let body = JsonRpcBody::new(
+            "wallet_sendRawTBlock".to_string(),
+            vec![json!(signed_tx.to_raw_tx())],
+        );
+        let result: Result<String, Error> =
+            self.send_json_rpc_request(&body, Self::new_headers(chain_id));
         result
     }
 
@@ -225,9 +245,17 @@ impl HttpClient {
     /// + `Result<Receipt, Error>`
     ///   + `Ok(Receipt)`
     ///   + `Err(err)`
-    pub fn pre_call_contract(&self, chain_id: u64, unsigned_tx: Transaction) -> Result<Receipt, Error> {
-        let body = JsonRpcBody::new("wallet_preExecuteContract".to_string(), vec![json!(unsigned_tx.to_raw_tx())]);
-        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id));
+    pub fn pre_call_contract(
+        &self,
+        chain_id: u64,
+        unsigned_tx: Transaction,
+    ) -> Result<Receipt, Error> {
+        let body = JsonRpcBody::new(
+            "wallet_preExecuteContract".to_string(),
+            vec![json!(unsigned_tx.to_raw_tx())],
+        );
+        let result: Result<Receipt, Error> =
+            self.send_json_rpc_request(&body, Self::new_headers(chain_id));
         result
     }
 
@@ -241,7 +269,8 @@ impl HttpClient {
     /// + `Box<Receipt>`
     pub fn get_receipt(&self, chain_id: u64, hash: &str) -> Result<Receipt, Error> {
         let body = JsonRpcBody::new("latc_getReceipt".to_string(), vec![json!(hash)]);
-        let result: Result<Receipt, Error> = self.send_json_rpc_request(&body, Self::new_headers(chain_id));
+        let result: Result<Receipt, Error> =
+            self.send_json_rpc_request(&body, Self::new_headers(chain_id));
         result
     }
 }
@@ -259,7 +288,9 @@ impl HttpRequest for HttpClient {
             let value = HeaderValue::from_str(&v).unwrap();
             header_map.insert(key, value);
         }
-        let res = self.client.post(&self.url)
+        let res = self
+            .client
+            .post(&self.url)
             .body(message.to_string())
             .headers(header_map)
             .send()?
@@ -277,7 +308,7 @@ pub trait WsRequest {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct WsClient<'a> {
     ip: &'a str, // ip address
-    port: u16, // websocket port
+    port: u16,   // websocket port
 }
 
 // type alias
@@ -286,10 +317,7 @@ type WsRead = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 impl<'a> WsClient<'a> {
     pub fn new(ip: &'a str, port: u16) -> Self {
-        WsClient {
-            ip,
-            port,
-        }
+        WsClient { ip, port }
     }
 
     /// 获取websocket连接地址
@@ -299,7 +327,9 @@ impl<'a> WsClient<'a> {
 
     /// 建立websocket连接
     async fn connect(&self) -> (WsWrite, WsRead) {
-        let (ws_stream, _) = connect_async(Url::parse(self.get_ws_conn_url().as_str()).unwrap()).await.expect("Failed to build ws connect");
+        let (ws_stream, _) = connect_async(Url::parse(self.get_ws_conn_url().as_str()).unwrap())
+            .await
+            .expect("Failed to build ws connect");
         let (write, read) = ws_stream.split();
         (write, read)
     }
@@ -317,10 +347,10 @@ impl<'a> WsClient<'a> {
                     let future = sender.send(message.to_string());
                     match future.await {
                         Ok(_) => println!("Success send message {} to channel", message),
-                        Err(e) => println!("Failed send message to channel, err {}", e)
+                        Err(e) => println!("Failed send message to channel, err {}", e),
                     }
                 }
-                Err(e) => println!("Failed receive message, err {}", e)
+                Err(e) => println!("Failed receive message, err {}", e),
             }
         }
     }
@@ -332,8 +362,8 @@ impl<'a> WsClient<'a> {
     ///
     /// ## Returns
     async fn consumer<F>(mut receiver: Receiver<String>, processor: F)
-        where
-            F: Fn(String) + Send + 'static,
+    where
+        F: Fn(String) + Send + 'static,
     {
         while let Some(msg) = receiver.recv().await {
             processor(msg)
@@ -345,7 +375,9 @@ impl<'a> WsClient<'a> {
     ///
     /// ## Returns
     /// + bool: 是否成功关闭websocket连接
-    pub async fn disconnect(mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>) -> bool {
+    pub async fn disconnect(
+        mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    ) -> bool {
         let result = write.send(Message::Close(None)).await;
         match result {
             Ok(_) => true,
@@ -389,27 +421,33 @@ mod tests {
         let response = client.get_latest_daemon_block(CHAIN_ID);
         match response {
             Ok(block) => println!("{:?}", block),
-            Err(err) => println!("{:?}", err)
+            Err(err) => println!("{:?}", err),
         }
     }
 
     #[test]
     fn test_get_receipt() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_receipt(CHAIN_ID, "0x616bf03baa685df9fddeff4701f170b30176e54120df726142a534f8f2b51873");
+        let response = client.get_receipt(
+            CHAIN_ID,
+            "0x616bf03baa685df9fddeff4701f170b30176e54120df726142a534f8f2b51873",
+        );
         match response {
             Ok(receipt) => println!("{:?}", receipt),
-            Err(err) => println!("{:?}", err.to_string())
+            Err(err) => println!("{:?}", err.to_string()),
         }
     }
 
     #[test]
     fn test_get_current_tx_daemon_block() {
         let client = HttpClient::new("192.168.1.185", 13000);
-        let response = client.get_latest_block(CHAIN_ID, &Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J"));
+        let response = client.get_latest_block(
+            CHAIN_ID,
+            &Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J"),
+        );
         match response {
             Ok(block) => println!("{:?}", block),
-            Err(err) => println!("{:?}", err)
+            Err(err) => println!("{:?}", err),
         }
     }
 
@@ -422,15 +460,17 @@ mod tests {
         let (write, read) = client.connect().await;
 
         let _send_handler = tokio::spawn(async move {
-            client.send(write, JsonRpcBody::new_ws_monitor().as_str()).await;
+            client
+                .send(write, JsonRpcBody::new_ws_monitor().as_str())
+                .await;
         });
         let _receive_handler = tokio::spawn(async move {
             WsClient::receive(read, sender).await;
         });
 
-        tokio::spawn(async move {
-            WsClient::consumer(receiver, |msg| println!("START {}", msg)).await
-        });
+        tokio::spawn(
+            async move { WsClient::consumer(receiver, |msg| println!("START {}", msg)).await },
+        );
 
         tokio::time::sleep(Duration::from_secs(30)).await;
         println!("{:?}", "🎉🎉🎉");

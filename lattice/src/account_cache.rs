@@ -1,9 +1,10 @@
-use log::debug;
-use moka::sync::Cache;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
+
+use log::debug;
+use moka::sync::Cache;
 
 use model::block::LatestBlock;
 use model::common::Address;
@@ -54,10 +55,23 @@ pub struct DefaultAccountCache {
 }
 
 impl DefaultAccountCache {
-    pub fn new(enable: bool, daemon_hash_expiration_duration: Duration, http_client: HttpClient) -> Self {
+    /// # 初始化
+    ///
+    /// ## 入参
+    /// + `enable: bool`: 是否启用缓存
+    /// + `daemon_hash_expiration_duration: Duration`: 守护区块哈希的过期时长
+    /// + `http_client: HttpClient`: 链的http客户端
+    ///
+    /// ## 出参
+    /// + `DefaultAccountCache`: 账户缓存
+    pub fn new(
+        enable: bool,
+        daemon_hash_expiration_duration: Duration,
+        http_client: HttpClient,
+    ) -> Self {
         let cache = Cache::builder()
             // .time_to_live(Duration::from_secs(30 * 60)) // 固定时长后过期，每次访问不会续期
-            .time_to_idle(Duration::from_secs(5 * 60))
+            .time_to_idle(Duration::from_secs(5 * 60)) // 每次访问会续期
             .build();
 
         let daemon_hash_expire_at_map = Mutex::new(HashMap::new());
@@ -73,6 +87,12 @@ impl DefaultAccountCache {
 }
 
 impl AccountCacheTrait for DefaultAccountCache {
+    /// # 设置账户的区块缓存
+    ///
+    /// ## 入参
+    /// + `chain_id: u64`: 链ID
+    /// + `account_address: &str`: 账户地址
+    /// + `block: LatestBlock`: 区块
     fn set(&self, chain_id: u64, account_address: &str, block: LatestBlock) {
         if !&self.enable {
             return;
@@ -83,13 +103,26 @@ impl AccountCacheTrait for DefaultAccountCache {
 
         let mut map = self.daemon_hash_expire_at_map.lock().unwrap();
         if !map.contains_key(&chain_id) {
-            map.insert(chain_id, SystemTime::now().add(self.daemon_hash_expiration_duration));
+            map.insert(
+                chain_id,
+                SystemTime::now().add(self.daemon_hash_expiration_duration),
+            );
         }
     }
 
+    /// # 获取账户的区块缓存，缓存失效时，可从链上查询
+    ///
+    /// ## 入参
+    /// + `chain_id: u64`: 链ID
+    /// + `account_address: &str`: 账户地址
+    ///
+    /// ## 出参
+    /// + `LatestBlock`: 最新区块
     fn get(&self, chain_id: u64, account_address: &str) -> LatestBlock {
         if !&self.enable {
-            let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address));
+            let result = self
+                .http_client
+                .get_latest_block(chain_id, &Address::new(account_address));
             return result.unwrap();
         }
 
@@ -97,11 +130,11 @@ impl AccountCacheTrait for DefaultAccountCache {
         let cached_block_option = self.cache.get(&key);
         let mut cached_block: LatestBlock;
         match cached_block_option {
-            Some(block) => {
-                cached_block = block
-            }
+            Some(block) => cached_block = block,
             None => {
-                let result = self.http_client.get_latest_block(chain_id, &Address::new(account_address));
+                let result = self
+                    .http_client
+                    .get_latest_block(chain_id, &Address::new(account_address));
                 cached_block = result.unwrap();
             }
         }
@@ -111,9 +144,14 @@ impl AccountCacheTrait for DefaultAccountCache {
         if map.contains_key(&chain_id) {
             let daemon_hash_expire_at = map.get(&chain_id).unwrap();
             if SystemTime::now() > *daemon_hash_expire_at {
-                debug!("链【{}】的守护区块哈希已过期，开启更新守护区块哈希", chain_id);
-                let latest_daemon_block = self.http_client.get_latest_daemon_block(chain_id).unwrap();
-                let daemon_hash_expire_at = SystemTime::now().add(self.daemon_hash_expiration_duration);
+                debug!(
+                    "链【{}】的守护区块哈希已过期，开启更新守护区块哈希",
+                    chain_id
+                );
+                let latest_daemon_block =
+                    self.http_client.get_latest_daemon_block(chain_id).unwrap();
+                let daemon_hash_expire_at =
+                    SystemTime::now().add(self.daemon_hash_expiration_duration);
                 map.insert(chain_id, daemon_hash_expire_at);
                 cached_block.daemon_hash = latest_daemon_block.hash;
             }
@@ -137,7 +175,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test() {
+    fn test_get() {
         let http_client = HttpClient::new("192.168.1.185", 13800);
         let default = DefaultAccountCache::new(true, Duration::from_secs(1), http_client);
         let mut block = default.get(2, "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi");
