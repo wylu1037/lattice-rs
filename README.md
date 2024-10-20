@@ -1,24 +1,29 @@
-<h1 align="center">Lattice Rust</h1>
+<h1 align="center">Lattice.rust</h1>
 
 <p align="center">
-    <a href="#rust">rust</a>  &#xa0; | &#xa0;
-    <a href="#blockchain">blockchain</a>  &#xa0; | &#xa0;
-    <a href="#contract">contract</a>  &#xa0; | &#xa0;
-    <a href="wasm">wasm</a>
+    <img alt="Static Badge" src="https://img.shields.io/badge/rust-v1.80.1-blue?logo=rust">
+    <img alt="Static Badge" src="https://img.shields.io/badge/build-passing-green?logo=github">
+    <img alt="Static Badge" src="https://img.shields.io/badge/release-v1.0.0-blue?logo=adguard">
+    <img alt="Static Badge" src="https://img.shields.io/badge/Evm-support-orange?logo=ethereum">
 </p>
 
-## 简介
+## 📖 Intro
 
-Rust语言版本的链SDK。
+Rust language implementation of blockchain SDK.
 
-## WebAssembly
+## 🧰 WASM
 
 [WASM](https://rustwasm.github.io/wasm-pack/book/)
 
-## Docs
+## 🕸️ Website
+
+local docs:
 
 ```shell
 cargo doc --open
 ```
 
-## 计划
+## ⏰ Plan
+
+- [ ] WASM
+- [ ] Website
