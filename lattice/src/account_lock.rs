@@ -1,8 +1,5 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
 
 /// 定义账户锁的trait
 pub trait AccountLockTrait: Sync + Send {
@@ -44,7 +41,7 @@ pub struct DefaultAccountLock {
 impl DefaultAccountLock {
     pub fn new() -> Self {
         DefaultAccountLock {
-            locks: RwLock::new(HashMap::new())
+            locks: RwLock::new(HashMap::new()),
         }
     }
 }
@@ -52,10 +49,11 @@ impl DefaultAccountLock {
 impl AccountLockTrait for DefaultAccountLock {
     fn obtain(&self, chain_id: u64, account_address: &str) -> Arc<Mutex<()>> {
         let key = format!("{}_{}", chain_id, account_address);
-        /// 当 RwLockWriteGuard 离开其作用域时，会自动释放锁，允许其他线程访问数据。
+        // 当 RwLockWriteGuard 离开其作用域时，会自动释放锁，允许其他线程访问数据。
         let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
 
-        let (lock, count) = locks.entry(key)
+        let (lock, count) = locks
+            .entry(key)
             .or_insert_with(|| (Arc::new(Mutex::new(())), 0));
         *count += 1;
         lock.clone() // 写锁离开作用域，自动释放锁
@@ -85,64 +83,45 @@ impl AccountLockTrait for DefaultAccountLock {
     }
 }
 
-/*struct AccountLockGuard<'a> {
-    account_lock: &'a dyn AccountLockTrait,
-    chain_id: u64,
-    account_address: String,
-}
-
-impl<'a> AccountLockGuard<'a> {
-    fn new(account_lock: &'a dyn AccountLockTrait, chain_id: u64, account_address: &str) -> Self {
-        AccountLockGuard {
-            account_lock,
-            chain_id,
-            account_address: account_address.to_string(),
-        }
-    }
-}
-
-impl<'a> Drop for AccountLockGuard<'a> {
-    fn drop(&mut self) {
-        self.account_lock.release(self.chain_id, &self.account_address)
-    }
-}*/
-
-/// 模拟耗时操作
-fn handle_request(lock: Arc<Mutex<()>>, request_id: usize) {
-    let _guard = lock.lock().unwrap();
-    println!("Handling request {} for the account", request_id);
-    sleep(Duration::from_secs(1)); // 模拟请求处理时间
-    println!("Finished request {}", request_id);
-}
-
-/// Box 是 Rust 中的一种智能指针，用于在堆上分配数据并提供对该数据的所有权管理。它允许你在编译时确定大小的情况下，在堆上存储数据。
-/// 1.在堆上分配数据
-/// 2.递归数据结构
-/// 3.动态分发与多态
-/// 4.在栈上存储大量数据
-/// 5.防止大型数据结构的拷贝
-fn handle_locks(account_lock: Box<dyn AccountLockTrait>) {
-    let chain_id = 1;
-    let address = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
-
-    let mut handles = vec![];
-
-    for i in 0..3 {
-        let lock = account_lock.obtain(chain_id, address);
-        let handle = thread::spawn(move || handle_request(lock, i));
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        account_lock.dec_ref(chain_id, address);
-        handle.join().unwrap();
-    }
-    // account_lock.release(chain_id, address);
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::thread;
+    use std::thread::sleep;
+    use std::time::Duration;
+
+    /// 模拟耗时操作
+    fn handle_request(lock: Arc<Mutex<()>>, request_id: usize) {
+        let _guard = lock.lock().unwrap();
+        println!("Handling request {} for the account", request_id);
+        sleep(Duration::from_secs(1)); // 模拟请求处理时间
+        println!("Finished request {}", request_id);
+    }
+
+    /// Box 是 Rust 中的一种智能指针，用于在堆上分配数据并提供对该数据的所有权管理。它允许你在编译时确定大小的情况下，在堆上存储数据。
+    /// 1.在堆上分配数据
+    /// 2.递归数据结构
+    /// 3.动态分发与多态
+    /// 4.在栈上存储大量数据
+    /// 5.防止大型数据结构的拷贝
+    fn handle_locks(account_lock: Box<dyn AccountLockTrait>) {
+        let chain_id = 1;
+        let address = "zltc_Z1pnS94bP4hQSYLs4aP4UwBP9pH8bEvhi";
+
+        let mut handles = vec![];
+
+        for i in 0..3 {
+            let lock = account_lock.obtain(chain_id, address);
+            let handle = thread::spawn(move || handle_request(lock, i));
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            account_lock.dec_ref(chain_id, address);
+            handle.join().unwrap();
+        }
+        // account_lock.release(chain_id, address);
+    }
 
     #[test]
     fn test_account_lock() {

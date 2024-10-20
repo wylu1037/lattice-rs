@@ -1,5 +1,4 @@
 use std::fs;
-use std::io::Read;
 
 use protobuf::descriptor::FileDescriptorProto;
 use protobuf::reflect::FileDescriptor;
@@ -80,7 +79,6 @@ pub fn deserialize_message(fd: FileDescriptor, message_name: &str, bytes: Vec<u8
     print_to_string(message.as_ref()).unwrap()
 }
 
-
 #[cfg(test)]
 mod test {
     use protobuf_json_mapping::parse_dyn_from_str;
@@ -108,8 +106,10 @@ mod test {
         let binding = result.write_to_bytes_dyn().unwrap();
         let bytes = binding.as_slice();
         println!("dynamic {:?}", bytes);
-        println!("dynamic json {}", protobuf::text_format::print_to_string(result.as_ref()));
-
+        println!(
+            "dynamic json {}",
+            protobuf::text_format::print_to_string(result.as_ref())
+        );
 
         // Find the field.
         //let aaa_field = message_descriptor.field_by_name("aaa").unwrap();
@@ -130,16 +130,36 @@ mod test {
     #[test]
     fn test_serialize() {
         let file_descriptor = make_file_descriptor(PROTO);
-        let bytes = serialize_message(file_descriptor, "Student", r#"{"name": "Jack", "age": 18, "address": {"province": "AnHui", "city": "LuAn"}}"#);
+        let bytes = serialize_message(
+            file_descriptor,
+            "Student",
+            r#"{"name": "Jack", "age": 18, "address": {"province": "AnHui", "city": "LuAn"}}"#,
+        );
 
-        assert_eq!(vec![10, 4, 74, 97, 99, 107, 16, 18, 26, 13, 10, 5, 65, 110, 72, 117, 105, 18, 4, 76, 117, 65, 110], bytes.as_slice())
+        assert_eq!(
+            vec![
+                10, 4, 74, 97, 99, 107, 16, 18, 26, 13, 10, 5, 65, 110, 72, 117, 105, 18, 4, 76,
+                117, 65, 110
+            ],
+            bytes.as_slice()
+        )
     }
 
     #[test]
     fn test_deserialize() {
         let file_descriptor = make_file_descriptor(PROTO);
-        let json = deserialize_message(file_descriptor, "Student", vec![10, 4, 74, 97, 99, 107, 16, 18, 26, 13, 10, 5, 65, 110, 72, 117, 105, 18, 4, 76, 117, 65, 110]);
+        let json = deserialize_message(
+            file_descriptor,
+            "Student",
+            vec![
+                10, 4, 74, 97, 99, 107, 16, 18, 26, 13, 10, 5, 65, 110, 72, 117, 105, 18, 4, 76,
+                117, 65, 110,
+            ],
+        );
 
-        assert_eq!(r#"{"name": "Jack", "age": 18, "address": {"province": "AnHui", "city": "LuAn"}}"#, json)
+        assert_eq!(
+            r#"{"name": "Jack", "age": 18, "address": {"province": "AnHui", "city": "LuAn"}}"#,
+            json
+        )
     }
 }
