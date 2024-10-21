@@ -66,7 +66,9 @@ impl FromStr for DerivationPath {
         }
 
         Ok(DerivationPath {
-            path: path.map(str::parse).collect::<Result<Vec<ChildNumber>, Error>>()?
+            path: path
+                .map(str::parse)
+                .collect::<Result<Vec<ChildNumber>, Error>>()?,
         })
     }
 }
@@ -76,7 +78,7 @@ impl DerivationPath {
         &self.path
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&ChildNumber> {
+    pub fn iter(&self) -> impl Iterator<Item = &ChildNumber> {
         self.path.iter()
     }
 }
@@ -105,13 +107,16 @@ mod tests {
     fn derive_path() {
         let path: DerivationPath = "m/44'/60'/0'/0".parse().unwrap();
 
-        assert_eq!(path, DerivationPath {
-            path: vec![
-                ChildNumber(44 | HARDENED_BIT),
-                ChildNumber(60 | HARDENED_BIT),
-                ChildNumber(0 | HARDENED_BIT),
-                ChildNumber(0),
-            ],
-        });
+        assert_eq!(
+            path,
+            DerivationPath {
+                path: vec![
+                    ChildNumber(44 | HARDENED_BIT),
+                    ChildNumber(60 | HARDENED_BIT),
+                    ChildNumber(0 | HARDENED_BIT),
+                    ChildNumber(0),
+                ],
+            }
+        );
     }
 }

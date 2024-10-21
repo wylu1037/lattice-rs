@@ -11,6 +11,7 @@ pub struct Mnemonic {
 }
 
 impl Mnemonic {
+    /// generate a new mnemonic and specify the language and word count, return a Mnemonic struct
     pub fn new(lang: Language, word_count: usize) -> Mnemonic {
         let mnemonic = Bip39Mnemonic::generate_in(lang, word_count).unwrap();
         Mnemonic {
