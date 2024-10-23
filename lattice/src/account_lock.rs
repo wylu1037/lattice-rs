@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
+use log::info;
+
 /// 定义账户锁的trait
 pub trait AccountLockTrait: Sync + Send {
     /// # 获取账户锁
@@ -12,32 +14,17 @@ pub trait AccountLockTrait: Sync + Send {
     /// ## 出参
     /// + `Arc<Mutex<()>>`: Mutex锁
     fn obtain(&self, chain_id: u64, account_address: &str) -> Arc<Mutex<()>>;
-
-    /// # 减少账户持有的Mutex在HashMap中的引用次数，当引用次数为0时，释放Mutex在HashMap中的缓存
-    ///
-    /// ## 入参
-    /// + `chain_id: u64`: 链ID
-    /// + `account_address: &str`: 账户地址
-    fn dec_ref(&self, chain_id: u64, account_address: &str);
-
-    /// # 释放账户持有的Mutex在HashMap中的缓存
-    ///
-    /// ## 入参
-    /// + `chain_id: u64`: 链ID
-    /// + `account_address: &str`: 账户地址
-    fn release(&self, chain_id: u64, account_address: &str);
 }
 
 pub struct DefaultAccountLock {
     /// 设计思路：
-    /// + `RwLock` 允许并发读和独占写操作，通过write方法阻塞其它线程，保证对HashMap的操作是并发安全的
+    /// + `RwLock` 允许`并发读`和`独占写`操作，通过`write`方法阻塞其它线程，保证对`HashMap`的操作是并发安全的
     /// + `Arc`（原子引用计数，Atomic Reference Counted）允许多个线程安全地共享同一个数据。通过`Arc::clone()`在多个线程间共享锁的所有权。
-    /// + `Mutex` 是一种同步原语，用于在多线程环境中保护共享数据的访问。Mutex 提供了独占访问的机制，
-    /// 确保同一时间只有一个线程可以访问被保护的数据。以此来保证一个账户的并发请求在服务端是串行执行的。
-    /// + `usize`: 对同一账户的获取Mutex锁进行记录，获取一次，次数+1，释放时，次数-1，为0时，将账户的缓存在HashMap的Mutex锁删除掉。
-    locks: RwLock<HashMap<String, (Arc<Mutex<()>>, usize)>>,
+    /// + `Mutex` 是一种同步原语，用于在多线程环境中保护共享数据的访问。Mutex 提供了独占访问的机制，确保同一时间只有一个线程可以访问被保护的数据。以此来保证一个账户的并发请求在服务端是串行执行的。
+    locks: RwLock<HashMap<String, Arc<Mutex<()>>>>,
 }
 
+/// 创建一个默认的账户锁
 impl DefaultAccountLock {
     pub fn new() -> Self {
         DefaultAccountLock {
@@ -52,34 +39,14 @@ impl AccountLockTrait for DefaultAccountLock {
         // 当 RwLockWriteGuard 离开其作用域时，会自动释放锁，允许其他线程访问数据。
         let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
 
-        let (lock, count) = locks
+        let lock = locks
             .entry(key)
-            .or_insert_with(|| (Arc::new(Mutex::new(())), 0));
-        *count += 1;
+            .or_insert_with(|| Arc::new(Mutex::new(())));
+        
+        info!(
+            "Lock obtained for account: {}", account_address
+        );
         lock.clone() // 写锁离开作用域，自动释放锁
-    }
-
-    fn dec_ref(&self, chain_id: u64, account_address: &str) {
-        let key = format!("{}_{}", chain_id, account_address);
-        let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
-
-        if let Some((_, count)) = locks.get_mut(&key) {
-            println!("count: {}", count);
-            if *count > 1 {
-                *count -= 1;
-            } else {
-                locks.remove(&key);
-            }
-        } // RwLockWriteGuard<HashMap<...>> 离开作用域，自动释放锁
-    }
-
-    fn release(&self, chain_id: u64, account_address: &str) {
-        let key = format!("{}_{}", chain_id, account_address);
-        let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
-
-        if locks.contains_key(&key) {
-            locks.remove(&key);
-        }
     }
 }
 
@@ -110,21 +77,20 @@ mod test {
 
         let mut handles = vec![];
 
-        for i in 0..3 {
-            let lock = account_lock.obtain(chain_id, address);
+        for i in 0..100 {
+            let lock: Arc<Mutex<()>> = account_lock.obtain(chain_id, address);
             let handle = thread::spawn(move || handle_request(lock, i));
             handles.push(handle);
         }
 
+        // wait for all threads to finish
         for handle in handles {
-            account_lock.dec_ref(chain_id, address);
             handle.join().unwrap();
         }
-        // account_lock.release(chain_id, address);
     }
 
     #[test]
-    fn test_account_lock() {
+    fn test_account_lock_in_multi_thread() {
         let account_lock = DefaultAccountLock::new();
         handle_locks(Box::new(account_lock));
     }
