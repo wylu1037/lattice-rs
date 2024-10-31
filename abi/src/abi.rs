@@ -42,7 +42,6 @@ impl<'a> Abi<'a> {
 
 #[cfg(test)]
 mod tests {
-    use alloy_dyn_abi::DynSolType;
 
     use crate::abi::Abi;
 
@@ -260,7 +259,7 @@ mod tests {
         let abi = Abi { abi: LEDGER_ABI };
         let f = abi.function("addProtocol".to_string()).unwrap();
         let i = f.inputs;
-        println!("{}", DynSolType::Uint(256).sol_type_name())
+        assert_eq!(i.len(), 2);
     }
 
     #[test]
