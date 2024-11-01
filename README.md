@@ -27,3 +27,4 @@ cargo doc --open
 
 - [ ] WASM
 - [ ] Website
+- [ ] CLI
