@@ -6,7 +6,9 @@ use bip39::Mnemonic as Bip39Mnemonic;
 #[derive(Debug)]
 pub struct Mnemonic {
     words: String,
+    #[allow(unused)]
     word_count: usize,
+    #[allow(unused)]
     lang: Language,
 }
 

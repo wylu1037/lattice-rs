@@ -104,9 +104,11 @@ pub struct LatticeClient {
     chain_config: ChainConfig,
 
     /// 连接节点的配置
+    #[allow(dead_code)]
     connecting_node_config: ConnectingNodeConfig,
 
     /// 可选配置
+    #[allow(dead_code)]
     options: Options,
 
     /// 节点的http client

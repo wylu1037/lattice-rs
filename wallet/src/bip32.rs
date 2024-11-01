@@ -50,10 +50,12 @@ pub struct ExtendedPrivateKey {
 }
 
 // Create alias for HMAC-SHA512
+#[allow(unused)]
 type HmacSha512 = Hmac<Sha512>;
 
 impl ExtendedPrivateKey {
     /// Attempts to derive an extended private key from a path.
+    #[allow(dead_code)]
     pub fn derive<Path>(seed: &[u8], path: Path, curve: Curve) -> Result<ExtendedPrivateKey, Error>
     where
         Path: IntoDerivationPath,
