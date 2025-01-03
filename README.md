@@ -23,7 +23,8 @@ local docs:
 cargo doc --open
 ```
 
-## ⏰ Plan
+## ⏰ Plan in 2025 Year
 
-- [ ] WASM
 - [ ] Website
+- [ ] Complete the [retry-rust](https://github.com/wylu1037/retry-rust)
+- [ ] WASM
