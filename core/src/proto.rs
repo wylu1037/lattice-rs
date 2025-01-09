@@ -99,7 +99,7 @@ mod test {
             .message_by_package_relative_name("Mmm")
             .unwrap();
         // Create an empty message.
-        //let mut message = message_descriptor.new_instance();
+        // let mut message = message_descriptor.new_instance();
 
         //
         let result = parse_dyn_from_str(&message_descriptor, r#"{"aaa": 100}"#).unwrap();
@@ -139,7 +139,7 @@ mod test {
         assert_eq!(
             vec![
                 10, 4, 74, 97, 99, 107, 16, 18, 26, 13, 10, 5, 65, 110, 72, 117, 105, 18, 4, 76,
-                117, 65, 110
+                117, 65, 110,
             ],
             bytes.as_slice()
         )

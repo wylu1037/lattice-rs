@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["core", "crypto", "model", "wallet", "lattice", "abi"]
+members = ["core", "crypto", "model", "wallet", "lattice", "abi", "common"]
 
 [workspace.dependencies]
 core = { version = "0.1.0", path = "core", default-features = false }

@@ -25,6 +25,15 @@ cargo doc --open
 
 ## ⏰ Plan in 2025 Year
 
+- [ ] Optimize error handling, avoid abuse unwrap and expect.
 - [ ] Website
 - [ ] Complete the [retry-rust](https://github.com/wylu1037/retry-rust)
 - [ ] WASM
+
+## Misc
+
+How to add a submodule?
+
+```shell
+cargo new --lib your_module
+```

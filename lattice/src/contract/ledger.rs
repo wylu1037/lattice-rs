@@ -216,8 +216,9 @@ mod test {
     #[test]
     fn test_create_business() {
         let contract = LedgerBuiltinContract::new();
-        let res = contract.create_business();
-        println!("res: {}", res);
+        let actual = contract.create_business();
+        let expected = "0x31";
+        assert_eq!(expected, actual)
     }
 
     #[test]
