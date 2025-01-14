@@ -27,6 +27,7 @@ cargo doc --open
 
 - [ ] Optimize error handling, avoid abuse unwrap and expect.
 - [ ] Website
+- [ ] Examples
 - [ ] Complete the [retry-rust](https://github.com/wylu1037/retry-rust)
 - [ ] WASM
 
