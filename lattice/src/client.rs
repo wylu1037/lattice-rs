@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::str::FromStr;
-
 use async_trait::async_trait;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -11,6 +7,9 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::mpsc::Sender;
@@ -153,6 +152,40 @@ impl HttpClient {
             return Err(Error::custom(err.code as i32, format!("{}", err.message)));
         }
         response.result.ok_or(Error::new("结果为空"))
+    }
+
+    /// # 测试连接
+    ///
+    /// ## 入参
+    /// + timeout: Option<Duration>: 超时时间，为None时，使用默认值10s
+    ///
+    /// ## 出参
+    /// + Result<(), io::Error>
+    fn can_dial(&self, timeout: Option<Duration>) -> Result<(), std::io::Error> {
+        let address = format!("{}:{}", self.ip, self.port);
+        let socket_addr: std::net::SocketAddr = address
+            .parse()
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
+        match std::net::TcpStream::connect_timeout(
+            &socket_addr,
+            timeout.unwrap_or(Duration::from_secs(10)),
+        ) {
+            Ok(_) => Ok(()),
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::TimedOut => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!("Connect {} timeout", address),
+                )),
+                std::io::ErrorKind::ConnectionRefused => Err(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionRefused,
+                    format!("{} refuse connection", address),
+                )),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionRefused,
+                    format!("{} connection failed", address),
+                )),
+            },
+        }
     }
 
     /// # 查询最新的守护区块信息
