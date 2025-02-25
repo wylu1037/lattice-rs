@@ -438,19 +438,30 @@ impl<'a> WsRequest for WsClient<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::client::{HttpClient, JsonRpcBody, WsClient, WsRequest};
+    use model::common::Address;
     use std::time::Duration;
-
     use tokio::sync::mpsc;
 
-    use model::common::Address;
-
-    use crate::client::{HttpClient, JsonRpcBody, WsClient, WsRequest};
-
     const CHAIN_ID: u64 = 1;
+    const IP: &str = "192.168.3.51";
+    const WS_PORT: u16 = 12999;
+    const HTTP_PORT: u16 = 13000;
+
+    #[test]
+    fn can_dial() {
+        let client = HttpClient::new(IP, HTTP_PORT);
+        let result = client.can_dial(None);
+        assert!(
+            result.is_ok(),
+            "Expected successful connection but failed with error: {:?}",
+            result.err()
+        )
+    }
 
     #[test]
     fn test_get_current_daemon_block() {
-        let client = HttpClient::new("192.168.1.185", 13000);
+        let client = HttpClient::new(IP, HTTP_PORT);
         let response = client.get_latest_daemon_block(CHAIN_ID);
         match response {
             Ok(block) => println!("{:?}", block),
@@ -460,7 +471,7 @@ mod tests {
 
     #[test]
     fn test_get_receipt() {
-        let client = HttpClient::new("192.168.1.185", 13000);
+        let client = HttpClient::new(IP, HTTP_PORT);
         let response = client.get_receipt(
             CHAIN_ID,
             "0x616bf03baa685df9fddeff4701f170b30176e54120df726142a534f8f2b51873",
@@ -473,7 +484,7 @@ mod tests {
 
     #[test]
     fn test_get_current_tx_daemon_block() {
-        let client = HttpClient::new("192.168.1.185", 13000);
+        let client = HttpClient::new(IP, HTTP_PORT);
         let response = client.get_latest_block(
             CHAIN_ID,
             &Address::new("zltc_RvRUFNUYCg2vsjHii713Gc9Y3VNauM46J"),
@@ -488,7 +499,7 @@ mod tests {
     async fn test_monitor_data() {
         // create multi-producer single-consumer channel
         let (sender, receiver) = mpsc::channel(10);
-        let client = WsClient::new("192.168.1.185", 12999);
+        let client = WsClient::new(IP, WS_PORT);
 
         let (write, read) = client.connect().await;
 
@@ -508,7 +519,4 @@ mod tests {
         tokio::time::sleep(Duration::from_secs(30)).await;
         println!("{:?}", "🎉🎉🎉");
     }
-
-    #[tokio::test]
-    async fn test_monitor_daemon_block() {}
 }

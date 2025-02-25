@@ -50,6 +50,7 @@ pub struct ExtendedPrivateKey {
 }
 
 // Create alias for HMAC-SHA512
+#[allow(dead_code)]
 type HmacSha512 = Hmac<Sha512>;
 
 impl ExtendedPrivateKey {
