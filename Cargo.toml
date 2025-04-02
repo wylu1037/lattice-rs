@@ -6,14 +6,57 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["core", "crypto", "model", "wallet", "lattice", "abi", "common"]
+members = [
+    "core",
+    "crypto",
+    "model",
+    "wallet",
+    "lattice",
+    "abi",
+    "common"
+]
 
 [workspace.dependencies]
-core = { version = "0.1.0", path = "core", default-features = false }
 crypto = { version = "0.5.1" }
+thiserror = { version = "1.0" }
+bytes = { version = "1.4" }
+alloy-primitives = { version = "0.7.6" }
+alloy-dyn-abi = { version = "0.7.6" }
+alloy-json-abi = { version = "0.7.6" }
+serde_json = { version = "1.0.117" }
+regex = { version = "1.10.5" }
+# hex = { package = "const-hex", version = "1.6", features = ["hex"] }
 
-thiserror = "1.0"
-serde = "1.0"
-serde_json = "1.0"
-bytes = "1.4"
-hex = { package = "const-hex", version = "1.6", features = ["hex"] }
+http = { version = "1.2.0" }
+protobuf = { version = "3.4.0" }
+protobuf-json-mapping = { version = "3.4.0" }
+protobuf-parse = { version = "3.4.0" }
+tempfile = { version = "3.10.1" }
+
+num-bigint = { version = "0.4.4" }
+once_cell = { version = "1.9.0" }
+libsm = { version = "0.6.0" }
+secp256k1 = { version = "0.29.0", features = ["recovery", "rand"] }
+rand = { version = "0.8.5" }
+sha256 = { version = "1.5.0" }
+hex = { version = "0.4.3" }
+bs58 = { version = "0.5.1" } # base58
+aes = { version = "0.7.5", features = ["ctr"] }
+serde = { version = "1.0.203", features = ["derive"] }
+rlp = { version = "0.5.2", default-features = false }
+#rlp-derive = { version = "0.1.0", default-features = false }
+
+async-trait = { version = "0.1.80" }
+tokio = { version = "1.38.0", features = ["full"] }
+tokio-tungstenite = { version = "0.22.0" }
+futures-util = { version = "0.3.30" }
+reqwest = { version = "0.12.4", features = ["blocking", "json"] }
+moka = { version = "0.12.8", features = ["sync"] }
+log = { version = "0.4.22" } # This is a logger facade, not a logger implementation. You need to use a logger implementation like `log4rs` or `env_logger` to use it.
+
+uuid = { version = "1.8.0", features = ["v4"] }
+scrypt = { version = "0.11.0" }
+sha2 = { version = "0.10.8" }
+hmac = { version = "0.12.1" }
+memzero = { version = "0.1.0" }
+bip39 = { version = "2.0.0", features = ["rand"] }

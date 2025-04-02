@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bytes = "1.0"
-http = "1.2.0"
+bytes = { workspace = true }
+http = { workspace = true }
