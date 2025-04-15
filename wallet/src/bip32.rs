@@ -41,6 +41,11 @@ impl fmt::Debug for Protected {
 }
 
 /// # 扩展私钥，包括私钥[0..32]、链码[32..64]
+///
+/// 在 BIP32 标准中，扩展私钥（Extended Private Key） 是一种包含额外元数据的私钥。这种私钥不仅包含
+/// 标准的 256 位私钥 (k)，还包括一个 链码（Chain Code, c），因此可以表示为 (k, c) 的形式。
+///
+/// **链码**是用于密钥派生的一种额外数据，在生成新的子密钥时，与私钥一起用于计算，保证了密钥派生过程的安全性和确定性。
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ExtendedPrivateKey {
     /// 私钥，32 byte

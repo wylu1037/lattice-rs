@@ -1,4 +1,8 @@
 /// 定义内置合约宏
+/// Define declarative macro.
+/// + ident: BuiltinContract Struct Name
+/// + expr: abi definition
+/// + expr: contract address
 #[macro_export]
 macro_rules! impl_builtin_contract {
     ($builtin_contract:ident, $abi:expr, $address:expr) => {
@@ -18,7 +22,7 @@ macro_rules! impl_builtin_contract {
                     address: $address.to_string(),
                 }
             }
-            
+
             /// # abi encode合约方法参数
             ///
             /// ## 入参

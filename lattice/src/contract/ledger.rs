@@ -188,11 +188,17 @@ pub(crate) const LEDGER_ABI_DEFINITION: &str = r#"[
     }
 ]"#;
 
+/// 存证合约地址
 const LEDGER_CONTRACT_ADDRESS: &str = "zltc_QLbz7JHiBTspUvTPzLHy5biDS9mu53mmv";
 
-impl_builtin_contract!(LedgerBuiltinContract, LEDGER_ABI_DEFINITION, LEDGER_CONTRACT_ADDRESS);
+impl_builtin_contract!(
+    LedgerBuiltinContract,
+    LEDGER_ABI_DEFINITION,
+    LEDGER_CONTRACT_ADDRESS
+);
 
 impl LedgerBuiltinContract {
+    /// # 创建业务合约地址
     pub fn create_business(&self) -> String {
         HexString::from(&[49u8]).hex_string
     }
@@ -205,7 +211,13 @@ impl LedgerBuiltinContract {
     /// ## 出参
     /// + `String`: encoded code
     pub fn create_protocol(&self, trade_number: u64, proto: &str) -> String {
-        self.encode_args("addProtocol", vec![Box::new(trade_number.to_string()), Box::new(string_to_bytes32_array(proto))])
+        self.encode_args(
+            "addProtocol",
+            vec![
+                Box::new(trade_number.to_string()),
+                Box::new(string_to_bytes32_array(proto)),
+            ],
+        )
     }
 }
 
@@ -224,7 +236,10 @@ mod test {
     #[test]
     fn test_create_protocol() {
         let contract = LedgerBuiltinContract::new();
-        let actual = contract.create_protocol(1, "syntax = \"proto3\";\n\nmessage Student {\n\tstring id = 1;\n\tstring name = 2;\n}");
+        let actual = contract.create_protocol(
+            1,
+            "syntax = \"proto3\";\n\nmessage Student {\n\tstring id = 1;\n\tstring name = 2;\n}",
+        );
         let expected = "0xef7e985800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000373796e746178203d202270726f746f33223b0a0a6d6573736167652053747564656e74207b0a09737472696e67206964203d20313b0a09737472696e67206e616d65203d20323b0a7d0000000000000000000000000000000000000000000000";
         assert_eq!(expected, actual);
     }

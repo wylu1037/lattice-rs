@@ -17,7 +17,7 @@ pub trait AccountLockTrait: Sync + Send {
 }
 
 pub struct DefaultAccountLock {
-    /// 设计思路：
+    /// # 设计思路
     /// + `RwLock` 允许`并发读`和`独占写`操作，通过`write`方法阻塞其它线程，保证对`HashMap`的操作是并发安全的
     /// + `Arc`（原子引用计数，Atomic Reference Counted）允许多个线程安全地共享同一个数据。通过`Arc::clone()`在多个线程间共享锁的所有权。
     /// + `Mutex` 是一种同步原语，用于在多线程环境中保护共享数据的访问。Mutex 提供了独占访问的机制，确保同一时间只有一个线程可以访问被保护的数据。以此来保证一个账户的并发请求在服务端是串行执行的。
@@ -39,13 +39,9 @@ impl AccountLockTrait for DefaultAccountLock {
         // 当 RwLockWriteGuard 离开其作用域时，会自动释放锁，允许其他线程访问数据。
         let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
 
-        let lock = locks
-            .entry(key)
-            .or_insert_with(|| Arc::new(Mutex::new(())));
-        
-        info!(
-            "Lock obtained for account: {}", account_address
-        );
+        let lock = locks.entry(key).or_insert_with(|| Arc::new(Mutex::new(())));
+
+        info!("Lock obtained for account: {}", account_address);
         lock.clone() // 写锁离开作用域，自动释放锁
     }
 }
