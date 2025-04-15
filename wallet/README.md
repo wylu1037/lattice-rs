@@ -39,9 +39,9 @@ BIP32（Bitcoin Improvement Proposal #32）是一个用于生成和管理分层�
 ### 特点：
 
 1. **随机种子生成**：BIP32 使用随机种子生成一组可预测的密钥对。通过一个种子（seed），用户可以从一个根密钥（master
-   key）派生出多个子密钥，从而避免了管理多个私钥的麻烦[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)[<sup data-citation='{&quot;url&quot;:&quot;https://segmentfault.com/a/1190000017103354&quot;,&quot;title&quot;:&quot;HP钱包概念及底层原理 (BIP32，BIP39，BIP44） - 区块链探索者 - SegmentFault 思否&quot;,&quot;content&quot;:&quot;概念是由BIP32（Bitcoin Improvement Proposals）提出，BIP39解决seed难以抄写记忆问题，BIP44规范各个币种路径规范达成业界共识。 至此修成正果成为分层钱包的集大成者。&quot;}'>2</sup>](https://segmentfault.com/a/1190000017103354)。
+   key）派生出多个子密钥，从而避免了管理多个私钥的麻烦。
 2. **层级结构**
-   ：密钥的派生是分层的，用户可以为不同的用途（如多个账户或区块链应用）使用不同的密钥，从而增强安全性[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)。
+   ：密钥的派生是分层的，用户可以为不同的用途（如多个账户或区块链应用）使用不同的密钥，从而增强安全性。
 
 BIP32 为区块链钱包及密钥管理奠定了技术基石，是分层确定性钱包的基础标准。
 
@@ -50,14 +50,14 @@ BIP32 为区块链钱包及密钥管理奠定了技术基石，是分层确定�
 ## BIP39: 助记词标准
 
 BIP39
-的出现解决了种子（seed）难以记忆和抄写的问题。它通过一种助记词生成方式，将复杂的随机种子转化为一组易读易记的单词列表[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)。
+的出现解决了种子（seed）难以记忆和抄写的问题。它通过一种助记词生成方式，将复杂的随机种子转化为一组易读易记的单词列表。
 
 ### 特点：
 
 1. **助记词生成**：BIP39 将随机熵转换为一组助记词，这些助记词可以用来生成种子，而该种子是 BIP32
-   的入口[<sup data-citation='{&quot;url&quot;:&quot;https://fpchen.readthedocs.io/zh/latest/note/BlockChain/wallet/BIP39-BIP32-BIP44.html&quot;,&quot;title&quot;:&quot;4. BIP39、BIP44、BIP32 协议 — fpchen note V0.1.0 文档&quot;,&quot;content&quot;:&quot;4. BIP39、BIP44、BIP32 协议 ¶ 4.1. HD 钱包导入流程 ¶ 4.2. BIP39 ¶ 熵每次都可以得到不同的助记词&quot;}'>5</sup>](https://fpchen.readthedocs.io/zh/latest/note/BlockChain/wallet/BIP39-BIP32-BIP44.html)。
+   的入口。
 2. **用户友好**
-   ：用户只需记住助记词即可恢复钱包，大大简化了备份过程[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)[<sup data-citation='{&quot;url&quot;:&quot;https://segmentfault.com/a/1190000017103354&quot;,&quot;title&quot;:&quot;HP钱包概念及底层原理 (BIP32，BIP39，BIP44） - 区块链探索者 - SegmentFault 思否&quot;,&quot;content&quot;:&quot;概念是由BIP32（Bitcoin Improvement Proposals）提出，BIP39解决seed难以抄写记忆问题，BIP44规范各个币种路径规范达成业界共识。 至此修成正果成为分层钱包的集大成者。&quot;}'>2</sup>](https://segmentfault.com/a/1190000017103354)。
+   ：用户只需记住助记词即可恢复钱包，大大简化了备份过程。
 
 这种助记词标准已成为区块链行业的通用协议，并被大多数钱包所采用。
 
@@ -66,7 +66,7 @@ BIP39
 ## BIP44: 多币种路径定义
 
 BIP44 是基于 BIP32
-的一种路径定义规范，用来支持多币种账户的分层路径生成[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)[<sup data-citation='{&quot;url&quot;:&quot;https://zhuanlan.zhihu.com/p/293110448&quot;,&quot;title&quot;:&quot;数字钱包 HD Wallet（BIP32密钥派生） - 知乎&quot;,&quot;content&quot;:&quot;BIP43和BIP44统一了钱包软件对分层路径和数字编号的理解和使用，使得了用户用相同的助记词在同一区块链中能够确定性地生成相同的一组密钥。 BIP39、BIP43、BIP44都是兼容BIP32的协议，后来还被比特币以外的区块链所借鉴，形成了区块链行业的共识。&quot;}'>3</sup>](https://zhuanlan.zhihu.com/p/293110448)。
+的一种路径定义规范，用来支持多币种账户的分层路径生成。
 
 ### 特点：
 
@@ -76,12 +76,12 @@ BIP44 是基于 BIP32
     ```
     - `purpose`: 固定为 44，标识为 BIP44 协议。
     - `coin_type`:
-      表示币种，比如比特币（0）或以太坊（60）[<sup data-citation='{&quot;url&quot;:&quot;https://zhuanlan.zhihu.com/p/293110448&quot;,&quot;title&quot;:&quot;数字钱包 HD Wallet（BIP32密钥派生） - 知乎&quot;,&quot;content&quot;:&quot;BIP43和BIP44统一了钱包软件对分层路径和数字编号的理解和使用，使得了用户用相同的助记词在同一区块链中能够确定性地生成相同的一组密钥。 BIP39、BIP43、BIP44都是兼容BIP32的协议，后来还被比特币以外的区块链所借鉴，形成了区块链行业的共识。&quot;}'>3</sup>](https://zhuanlan.zhihu.com/p/293110448)。
+      表示币种，比如比特币（0）或以太坊（60）。
     - `account`: 支持多账户体系。
     - `change`: 区分主钱包地址和找零地址。
     - `address_index`: 标识具体的地址序号。
 2. **行业共识**：BIP44
-   最显著的贡献是将多币种路径纳入规范，使得钱包软件能够达成一致，生成确定性的密钥对[<sup data-citation='{&quot;url&quot;:&quot;https://segmentfault.com/a/1190000017103354&quot;,&quot;title&quot;:&quot;HP钱包概念及底层原理 (BIP32，BIP39，BIP44） - 区块链探索者 - SegmentFault 思否&quot;,&quot;content&quot;:&quot;概念是由BIP32（Bitcoin Improvement Proposals）提出，BIP39解决seed难以抄写记忆问题，BIP44规范各个币种路径规范达成业界共识。 至此修成正果成为分层钱包的集大成者。&quot;}'>2</sup>](https://segmentfault.com/a/1190000017103354)[<sup data-citation='{&quot;url&quot;:&quot;https://zhuanlan.zhihu.com/p/293110448&quot;,&quot;title&quot;:&quot;数字钱包 HD Wallet（BIP32密钥派生） - 知乎&quot;,&quot;content&quot;:&quot;BIP43和BIP44统一了钱包软件对分层路径和数字编号的理解和使用，使得了用户用相同的助记词在同一区块链中能够确定性地生成相同的一组密钥。 BIP39、BIP43、BIP44都是兼容BIP32的协议，后来还被比特币以外的区块链所借鉴，形成了区块链行业的共识。&quot;}'>3</sup>](https://zhuanlan.zhihu.com/p/293110448)。
+   最显著的贡献是将多币种路径纳入规范，使得钱包软件能够达成一致，生成确定性的密钥对。
 
 ---
 
@@ -91,16 +91,16 @@ BIP44 是基于 BIP32
 
 1. **BIP32** 提供分层确定性密钥树的生成和管理方法。
 2. **BIP39** 为 BIP32
-   提供了用户友好的助记词方案，使得随机种子易于记忆和使用[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)[<sup data-citation='{&quot;url&quot;:&quot;https://segmentfault.com/a/1190000017103354&quot;,&quot;title&quot;:&quot;HP钱包概念及底层原理 (BIP32，BIP39，BIP44） - 区块链探索者 - SegmentFault 思否&quot;,&quot;content&quot;:&quot;概念是由BIP32（Bitcoin Improvement Proposals）提出，BIP39解决seed难以抄写记忆问题，BIP44规范各个币种路径规范达成业界共识。 至此修成正果成为分层钱包的集大成者。&quot;}'>2</sup>](https://segmentfault.com/a/1190000017103354)。
+   提供了用户友好的助记词方案，使得随机种子易于记忆和使用。
 3. **BIP44** 为 BIP32
-   定义了路径规则，支持多币种、账户和地址的分层管理[<sup data-citation='{&quot;url&quot;:&quot;https://imtoken.fans/t/topic/390&quot;,&quot;title&quot;:&quot;如何理解钱包涉及的 BIP32、BIP44、BIP39 - 中文区 - imToken Fans&quot;,&quot;content&quot;:&quot;一句话概括下 BIP44 就是：给 BIP32 的分层路径定义规范。 什么是 BIP39？ BIP32 能够让我们保存一个随机数种子，而不是一堆密钥。但是对于大部分用户来讲，还是非常不友好，这就促使了 BIP39 的出现。它使用助记词的方式生成种子，这种情况下用户只要记住助记词，就可以创造出随机种子作为 BIP32 的&quot;}'>1</sup>](https://imtoken.fans/t/topic/390)[<sup data-citation='{&quot;url&quot;:&quot;https://zhuanlan.zhihu.com/p/293110448&quot;,&quot;title&quot;:&quot;数字钱包 HD Wallet（BIP32密钥派生） - 知乎&quot;,&quot;content&quot;:&quot;BIP43和BIP44统一了钱包软件对分层路径和数字编号的理解和使用，使得了用户用相同的助记词在同一区块链中能够确定性地生成相同的一组密钥。 BIP39、BIP43、BIP44都是兼容BIP32的协议，后来还被比特币以外的区块链所借鉴，形成了区块链行业的共识。&quot;}'>3</sup>](https://zhuanlan.zhihu.com/p/293110448)。
+   定义了路径规则，支持多币种、账户和地址的分层管理。
 
 ---
 
 ## 总结
 
 BIP32、BIP39 和 BIP44 是分层确定性钱包的重要协议，分别从密钥生成、用户体验和路径规范三个层面完善了 HD
-钱包体系，从而形成了区块链行业的广泛共识[<sup data-citation='{&quot;url&quot;:&quot;https://zhuanlan.zhihu.com/p/293110448&quot;,&quot;title&quot;:&quot;数字钱包 HD Wallet（BIP32密钥派生） - 知乎&quot;,&quot;content&quot;:&quot;BIP43和BIP44统一了钱包软件对分层路径和数字编号的理解和使用，使得了用户用相同的助记词在同一区块链中能够确定性地生成相同的一组密钥。 BIP39、BIP43、BIP44都是兼容BIP32的协议，后来还被比特币以外的区块链所借鉴，形成了区块链行业的共识。&quot;}'>3</sup>](https://zhuanlan.zhihu.com/p/293110448)[<sup data-citation='{&quot;url&quot;:&quot;https://fpchen.readthedocs.io/zh/latest/note/BlockChain/wallet/BIP39-BIP32-BIP44.html&quot;,&quot;title&quot;:&quot;4. BIP39、BIP44、BIP32 协议 — fpchen note V0.1.0 文档&quot;,&quot;content&quot;:&quot;4. BIP39、BIP44、BIP32 协议 ¶ 4.1. HD 钱包导入流程 ¶ 4.2. BIP39 ¶ 熵每次都可以得到不同的助记词&quot;}'>5</sup>](https://fpchen.readthedocs.io/zh/latest/note/BlockChain/wallet/BIP39-BIP32-BIP44.html)。
+钱包体系，从而形成了区块链行业的广泛共识。
 
 ---
 
