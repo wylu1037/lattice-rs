@@ -4,6 +4,7 @@ use bip39::Language;
 use bip39::Mnemonic as Bip39Mnemonic;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Mnemonic {
     words: String,
     word_count: usize,

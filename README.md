@@ -38,3 +38,8 @@ How to add a submodule?
 ```shell
 cargo new --lib your_module
 ```
+
+## TODO
+
+1. 不要使用`unwrap`或`expect`，使用`Result<T, E>`或`Option<T>`；
+2. 定义自己的错误类型
