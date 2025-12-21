@@ -36,8 +36,16 @@ impl DefaultAccountLock {
 impl AccountLockTrait for DefaultAccountLock {
     fn obtain(&self, chain_id: u64, account_address: &str) -> Arc<Mutex<()>> {
         let key = format!("{}_{}", chain_id, account_address);
+
+        // 先尝试获取读锁
+        if let Ok(locks) = self.locks.read() {
+            if let Some(lock) = locks.get(&key) {
+                return lock.clone();
+            }
+        }
+
         // 当 RwLockWriteGuard 离开其作用域时，会自动释放锁，允许其他线程访问数据。
-        let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程
+        let mut locks = self.locks.write().unwrap(); // 使用写锁阻塞其它线程，防止多个线程同时修改HashMap
 
         let lock = locks.entry(key).or_insert_with(|| Arc::new(Mutex::new(())));
 
