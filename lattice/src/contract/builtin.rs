@@ -16,6 +16,7 @@ macro_rules! impl_builtin_contract {
 
         impl $builtin_contract {
             /// # 初始化一个内置合约
+            #[allow(dead_code)]
             fn new() -> Self {
                 $builtin_contract {
                     abi: $abi.to_string(),

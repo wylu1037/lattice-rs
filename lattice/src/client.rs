@@ -161,6 +161,7 @@ impl HttpClient {
     ///
     /// ## 出参
     /// + Result<(), io::Error>
+    #[allow(dead_code)]
     fn can_dial(&self, timeout: Option<Duration>) -> Result<(), std::io::Error> {
         let address = format!("{}:{}", self.ip, self.port);
         let socket_addr: std::net::SocketAddr = address
@@ -346,6 +347,7 @@ pub struct WsClient<'a> {
 
 // type alias
 type WsWrite = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+#[allow(dead_code)]
 type WsRead = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 impl<'a> WsClient<'a> {
@@ -359,6 +361,7 @@ impl<'a> WsClient<'a> {
     }
 
     /// 建立websocket连接
+    #[allow(dead_code)]
     async fn connect(&self) -> (WsWrite, WsRead) {
         let (ws_stream, _) = connect_async(Url::parse(self.get_ws_conn_url().as_str()).unwrap())
             .await
@@ -373,6 +376,7 @@ impl<'a> WsClient<'a> {
     /// + `sender: Sender<String>`
     ///
     /// ## Returns
+    #[allow(dead_code)]
     async fn receive(mut read: WsRead, sender: Sender<String>) {
         while let Some(msg) = read.next().await {
             match msg {
@@ -394,6 +398,7 @@ impl<'a> WsClient<'a> {
     /// + `processor: F`: F is a closures, signature is Fn(String)
     ///
     /// ## Returns
+    #[allow(dead_code)]
     async fn consumer<F>(mut receiver: Receiver<String>, processor: F)
     where
         F: Fn(String) + Send + 'static,

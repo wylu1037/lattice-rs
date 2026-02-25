@@ -1,4 +1,3 @@
-use crate::builder::TransactionBuilder;
 use crate::impl_builtin_contract;
 
 /// 内置的投票合约
